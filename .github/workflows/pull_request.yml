@@ -1,0 +1,33 @@
+name: Pull request
+on: [pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  common:
+    name: Build & test
+    uses: ./.github/workflows/common.yml
+    secrets: inherit
+
+  rustfmt:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: r7kamura/rust-problem-matchers@v1
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: r7kamura/rust-problem-matchers@v1
+      - run: cargo clippy

@@ -1,0 +1,12 @@
+name: Continutous Integration
+on: [push]
+
+permissions:
+  contents: read
+
+jobs:
+  common:
+    name: Build & test
+    uses: ./.github/workflows/common.yml
+    secrets: inherit
+    # TODO: Skip if pull request exists?

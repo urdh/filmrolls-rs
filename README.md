@@ -3,6 +3,8 @@
 [![Github](https://img.shields.io/badge/github-urdh/filmrolls--rs-8da0cb?style=flat-square&labelColor=555555&logo=github)](https://github.com/dtolnay/cargo-expand)
 [![Crate](https://img.shields.io/crates/v/filmrolls?style=flat-square&color=fc8d62&logo=rust)][release]
 [![License](https://img.shields.io/github/license/urdh/filmrolls-rs?style=flat-square)](LICENSE.md)
+[![Workflow](https://img.shields.io/github/actions/workflow/status/urdh/filmrolls-rs/push.yml?style=flat-square)][build]
+[![Coverage](https://img.shields.io/codecov/c/gh/urdh/filmrolls-rs?style=flat-square)][codecov]
 
 This is a utility designed to read the XML files used by the [Film Rolls iOS app][film-rolls],
 and enable batch EXIF tagging of scanned negatives in TIFF format based on the information in
@@ -17,4 +19,6 @@ Eventually there will be some sort of [changelog](CHANGELOG.md) as well.
 
 [github]: https://github.com/urdh/filmrolls-rs
 [release]: https://crates.io/crates/filmrolls
+[build]: https://github.com/urdh/filmrolls-rs/actions/workflows/push.yml
+[codecov]: https://codecov.io/gh/urdh/filmrolls-rs
 [gem]: https://rubygems.org/gems/filmrolls

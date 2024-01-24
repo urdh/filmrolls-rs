@@ -1,0 +1,42 @@
+name: Release
+on:
+  release:
+    types: [published]
+  push:
+    tags: ['v[0-9]+.*']
+
+permissions:
+  contents: read
+
+jobs:
+  common:
+    name: Build & test
+    uses: ./.github/workflows/common.yml
+    secrets: inherit
+
+  create-release:
+    name: Create a Github release
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    needs: common
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/create-gh-release-action@v1
+        with:
+          changelog: CHANGELOG.md
+          token: ${{ github.token }}
+          draft: true
+
+  publish-crate:
+    name: Publish to crates.io
+    if: ${{ github.event_name == 'release' }}
+    runs-on: ubuntu-latest
+    needs: common
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: katyo/publish-crates@v2
+        with:
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
