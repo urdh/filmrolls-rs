@@ -39,6 +39,12 @@ impl std::fmt::Display for Position {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct ShutterSpeed(num_rational::Rational32);
 
+impl From<num_rational::Rational32> for ShutterSpeed {
+    fn from(value: num_rational::Rational32) -> Self {
+        Self(value)
+    }
+}
+
 impl std::fmt::Display for ShutterSpeed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} s", self.0)
@@ -52,6 +58,12 @@ impl std::fmt::Display for ShutterSpeed {
 /// `Ratio` type from the *num-rational* crate.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct ExposureBias(num_rational::Rational32);
+
+impl From<num_rational::Rational32> for ExposureBias {
+    fn from(value: num_rational::Rational32) -> Self {
+        Self(value)
+    }
+}
 
 impl Default for ExposureBias {
     fn default() -> Self {
@@ -74,6 +86,12 @@ impl std::fmt::Display for ExposureBias {
 /// discarding information, this type uses `Decimal` instead.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct Aperture(rust_decimal::Decimal);
+
+impl From<rust_decimal::Decimal> for Aperture {
+    fn from(value: rust_decimal::Decimal) -> Self {
+        Self(value)
+    }
+}
 
 impl std::fmt::Display for Aperture {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
