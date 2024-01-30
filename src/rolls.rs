@@ -7,6 +7,7 @@ use std::str::FromStr;
 
 use chrono::{DateTime, FixedOffset};
 use itertools::Itertools;
+use serde_with::DeserializeFromStr;
 
 use crate::types::*;
 mod filmrolls;
@@ -57,6 +58,7 @@ impl std::fmt::Display for Film {
 
 /// A camera make/model, e.g. "Voigtländer Bessa R2M"
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(DeserializeFromStr)]
 pub struct Camera {
     pub make: String,
     pub model: String,
@@ -148,19 +150,34 @@ impl TryFrom<filmrolls::Frame<'_>> for Frame {
 
     fn try_from(value: filmrolls::Frame<'_>) -> Result<Self, Self::Error> {
         Ok(Self {
-            lens: as_optional_string(&value.lens.value)
+            lens: value
+                .lens
+                .as_deref()
                 .map(TryInto::try_into)
                 .transpose()
                 .map_err(|_| SourceError::InvalidData("lens (`<lens>`)"))?,
-            aperture: value.aperture.value.into(),
-            shutter_speed: value.shutter_speed.value.into(),
-            compensation: value.compensation.value.into(),
-            datetime: value.date.value,
+            aperture: value
+                .aperture
+                .map(TryInto::try_into)
+                .ok_or(SourceError::MissingData("aperture (`<aperture>`)"))?
+                .map_err(|_| SourceError::InvalidData("aperture (`<aperture>`)"))?,
+            shutter_speed: value
+                .shutter_speed
+                .map(TryInto::try_into)
+                .ok_or(SourceError::MissingData("shutter speed (`<shutterSpeed>`)"))?
+                .map_err(|_| SourceError::InvalidData("shutter speed (`<shutterSpeed>`)"))?,
+            compensation: value
+                .compensation
+                .map(TryInto::try_into)
+                .transpose()
+                .map_err(|_| SourceError::InvalidData("compensation (`<compensation>`)"))?
+                .unwrap_or_default(),
+            datetime: value.date.into(),
             position: Position {
-                lat: value.latitude.value,
-                lon: value.longitude.value,
+                lat: value.latitude,
+                lon: value.longitude,
             },
-            note: as_optional_string(&value.note.value).map(Into::into),
+            note: value.note.map(Into::into),
         })
     }
 }
@@ -189,21 +206,33 @@ impl TryFrom<filmrolls::FilmRoll<'_>> for Roll {
 
     fn try_from(value: filmrolls::FilmRoll) -> Result<Self, Self::Error> {
         Ok(Self {
-            id: as_optional_string(&value.note.value)
-                .ok_or(SourceError::MissingData("roll ID (`<note>`)"))?
-                .to_owned(),
-            film: as_optional_string(&value.title.value).map(Into::into),
-            speed: FilmSpeed::from_iso(value.speed.value.into())
+            id: value
+                .note
+                .map(Into::into)
+                .ok_or(SourceError::MissingData("roll ID (`<note>`)"))?,
+            film: value
+                .title
+                .as_deref()
+                .map(TryInto::try_into)
+                .transpose()
+                .map_err(|_| SourceError::InvalidData("film (`<title>`)"))?,
+            speed: FilmSpeed::from_iso(value.speed.into())
                 .map_err(|_| SourceError::InvalidData("film speed (`<speed>`)"))?,
-            camera: as_optional_string(&value.camera.value)
+            camera: value
+                .camera
+                .as_deref()
                 .map(TryInto::try_into)
                 .transpose()
                 .map_err(|_| SourceError::InvalidData("camera (`<camera>`)"))?,
-            load: value.load.value,
-            unload: value.unload.value,
-            frames: expand_indexed(value.frames.frame.into_iter().map(
-                |frame| -> (usize, Result<Frame, _>) { (frame.number.value, frame.try_into()) },
-            ))
+            load: value.load.into(),
+            unload: value.unload.into(),
+            frames: expand_indexed(
+                value
+                    .frames
+                    .frame
+                    .into_iter()
+                    .map(|frame| -> (usize, Result<Frame, _>) { (frame.number, frame.try_into()) }),
+            )
             .map(Option::transpose)
             .try_collect()?,
         })
@@ -251,28 +280,12 @@ where
         .flatten()
 }
 
-/// Converts `value` to `None` if empty, `Some(value)` otherwise
-fn as_optional_string(value: &str) -> Option<&str> {
-    match value.trim().is_empty() {
-        true => None,
-        false => Some(value),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::TimeZone;
     use itertools::assert_equal;
     use pretty_assertions::assert_eq;
-
-    #[test]
-    fn as_optional_string() {
-        assert_eq!(super::as_optional_string(""), None);
-        assert_eq!(super::as_optional_string("  "), None);
-        assert_eq!(super::as_optional_string("\t\n"), None);
-        assert_eq!(super::as_optional_string("hello"), Some("hello"));
-    }
 
     #[test]
     fn expand_indexed() {
@@ -367,50 +380,43 @@ mod tests {
     #[test]
     fn convert_filmrolls_frame() {
         let base_frame = filmrolls::Frame {
-            lens: filmrolls::TextValue {
-                value: "Voigtländer Color Skopar 35/2.5 Pancake II".into(),
-            },
-            aperture: filmrolls::Value {
-                value: rust_decimal::Decimal::new(56, 1),
-            },
-            shutter_speed: filmrolls::Value {
-                value: num_rational::Rational32::new(1, 500),
-            },
-            compensation: filmrolls::Value::default(),
-            accessory: filmrolls::TextValue::default(),
-            number: filmrolls::Value { value: 1 },
-            date: filmrolls::DateValue {
-                value: chrono::Utc
-                    .with_ymd_and_hms(2016, 5, 13, 14, 12, 40)
-                    .unwrap()
-                    .into(),
-            },
-            latitude: filmrolls::Value { value: 57.700767 },
-            longitude: filmrolls::Value { value: 11.953715 },
-            note: filmrolls::TextValue {
-                value: "Notes for this frame!".into(),
-            },
+            lens: Some("Voigtländer Color Skopar 35/2.5 Pancake II".into()),
+            aperture: Some(rust_decimal::Decimal::new(56, 1).into()),
+            shutter_speed: Some(num_rational::Rational32::new(1, 500).into()),
+            compensation: None,
+            accessory: None,
+            number: 1,
+            date: chrono::Utc
+                .with_ymd_and_hms(2016, 5, 13, 14, 12, 40)
+                .unwrap()
+                .into(),
+            latitude: 57.700767,
+            longitude: 11.953715,
+            note: Some("Notes for this frame!".into()),
         };
         let expected = Frame {
             lens: Some(Lens {
                 make: "Voigtländer".into(),
                 model: "Color Skopar 35/2.5 Pancake II".into(),
             }),
-            aperture: Aperture::from(base_frame.aperture.value),
-            shutter_speed: ShutterSpeed::from(base_frame.shutter_speed.value),
-            compensation: ExposureBias::from(base_frame.compensation.value),
-            datetime: base_frame.date.value,
+            aperture: base_frame.aperture.map(Aperture::from).unwrap(),
+            shutter_speed: base_frame.shutter_speed.map(ShutterSpeed::from).unwrap(),
+            compensation: base_frame
+                .compensation
+                .map(ExposureBias::from)
+                .unwrap_or_default(),
+            datetime: base_frame.date.clone().into(),
             position: Position {
-                lat: base_frame.latitude.value,
-                lon: base_frame.longitude.value,
+                lat: base_frame.latitude,
+                lon: base_frame.longitude,
             },
-            note: Some(base_frame.note.value.clone().into()),
+            note: base_frame.note.clone().map(Into::into),
         };
 
         assert_eq!(Frame::try_from(base_frame.clone()), Ok(expected.clone()));
         assert_eq!(
             Frame::try_from(filmrolls::Frame {
-                lens: filmrolls::TextValue { value: "".into() },
+                lens: None,
                 ..base_frame.clone()
             }),
             Ok(Frame {
@@ -420,7 +426,7 @@ mod tests {
         );
         assert_eq!(
             Frame::try_from(filmrolls::Frame {
-                note: filmrolls::TextValue { value: "".into() },
+                note: None,
                 ..base_frame.clone()
             }),
             Ok(Frame {
@@ -433,61 +439,51 @@ mod tests {
     #[test]
     fn convert_filmrolls_roll() {
         let base_roll = filmrolls::FilmRoll {
-            title: filmrolls::TextValue {
-                value: "Ilford Delta 100".into(),
-            },
-            speed: filmrolls::Value { value: 100 },
-            camera: filmrolls::TextValue {
-                value: "Voigtländer Bessa R2M".into(),
-            },
-            load: filmrolls::DateValue {
-                value: chrono::Utc
-                    .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
-                    .unwrap()
-                    .into(),
-            },
-            unload: filmrolls::DateValue {
-                value: chrono::Utc
-                    .with_ymd_and_hms(2016, 5, 21, 14, 13, 15)
-                    .unwrap()
-                    .into(),
-            },
-            note: filmrolls::TextValue {
-                value: "A0012".into(),
-            },
+            title: Some("Ilford Delta 100".into()),
+            speed: 100,
+            camera: Some("Voigtländer Bessa R2M".into()),
+            load: chrono::Utc
+                .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
+                .unwrap()
+                .into(),
+            unload: chrono::Utc
+                .with_ymd_and_hms(2016, 5, 21, 14, 13, 15)
+                .unwrap()
+                .into(),
+            note: Some("A0012".into()),
             frames: filmrolls::Frames { frame: vec![] },
         };
         let expected = Roll {
-            id: base_roll.note.value.clone().into(),
+            id: base_roll.note.clone().unwrap().into(),
             film: Some(Film("Ilford Delta 100".into())),
             speed: FilmSpeed::from_din(21), // ISO 100/21°
             camera: Some(Camera {
                 make: "Voigtländer".into(),
                 model: "Bessa R2M".into(),
             }),
-            load: base_roll.load.value,
-            unload: base_roll.unload.value,
+            load: base_roll.load.clone().into(),
+            unload: base_roll.unload.clone().into(),
             frames: vec![],
         };
 
         assert_eq!(Roll::try_from(base_roll.clone()), Ok(expected.clone()));
         assert_eq!(
             Roll::try_from(filmrolls::FilmRoll {
-                note: filmrolls::TextValue { value: "".into() },
+                note: None,
                 ..base_roll.clone()
             }),
             Err(SourceError::MissingData("..."))
         );
         assert_eq!(
             Roll::try_from(filmrolls::FilmRoll {
-                speed: filmrolls::Value { value: 0 },
+                speed: 0,
                 ..base_roll.clone()
             }),
             Err(SourceError::InvalidData("..."))
         );
         assert_eq!(
             Roll::try_from(filmrolls::FilmRoll {
-                title: filmrolls::TextValue { value: "".into() },
+                title: None,
                 ..base_roll.clone()
             }),
             Ok(Roll {
@@ -497,7 +493,7 @@ mod tests {
         );
         assert_eq!(
             Roll::try_from(filmrolls::FilmRoll {
-                camera: filmrolls::TextValue { value: "".into() },
+                camera: None,
                 ..base_roll.clone()
             }),
             Ok(Roll {

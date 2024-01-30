@@ -48,7 +48,7 @@ features = ["supports-colors"]
 
 [dependencies.quick-xml]
 version = "0.31"
-features = ["serialize"]
+features = ["serialize", "serde-types"]
 
 [dependencies.rust_decimal]
 version = "1.33"
@@ -57,6 +57,10 @@ features = ["maths"]
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]
+
+[dependencies.serde_with]
+version = "3.6"
+features = ["macros"]
 
 [dev-dependencies]
 pretty_assertions = "1.4"

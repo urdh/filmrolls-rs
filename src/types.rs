@@ -2,6 +2,7 @@
 use std::num::{NonZeroU8, TryFromIntError};
 
 use rust_decimal::{prelude::Zero, Decimal, MathematicalOps};
+use serde_with::DeserializeFromStr;
 
 /// A geographical position
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
@@ -37,7 +38,16 @@ impl std::fmt::Display for Position {
 /// this type represents them using the `Ratio` type from the
 /// *num-rational* crate.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(DeserializeFromStr)]
 pub struct ShutterSpeed(num_rational::Rational32);
+
+impl std::str::FromStr for ShutterSpeed {
+    type Err = num_rational::ParseRatioError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        num_rational::Rational32::from_str(&s).map(Self)
+    }
+}
 
 impl From<num_rational::Rational32> for ShutterSpeed {
     fn from(value: num_rational::Rational32) -> Self {
@@ -57,7 +67,16 @@ impl std::fmt::Display for ShutterSpeed {
 /// increments, and therefore this type represents them using the
 /// `Ratio` type from the *num-rational* crate.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(DeserializeFromStr)]
 pub struct ExposureBias(num_rational::Rational32);
+
+impl std::str::FromStr for ExposureBias {
+    type Err = num_rational::ParseRatioError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        num_rational::Rational32::from_str(&s).map(Self)
+    }
+}
 
 impl From<num_rational::Rational32> for ExposureBias {
     fn from(value: num_rational::Rational32) -> Self {
@@ -85,7 +104,16 @@ impl std::fmt::Display for ExposureBias {
 /// represents them using floating-point numbers anyway. To avoid
 /// discarding information, this type uses `Decimal` instead.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(DeserializeFromStr)]
 pub struct Aperture(rust_decimal::Decimal);
+
+impl std::str::FromStr for Aperture {
+    type Err = rust_decimal::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        rust_decimal::Decimal::from_str(&s).map(Self)
+    }
+}
 
 impl From<rust_decimal::Decimal> for Aperture {
     fn from(value: rust_decimal::Decimal) -> Self {

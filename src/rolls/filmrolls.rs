@@ -1,8 +1,10 @@
 //! Deserialization for *Film Rolls* XML data
-use std::borrow::Cow;
-
 use chrono::{DateTime, FixedOffset};
+use quick_xml::serde_helpers::text_content;
 use serde::Deserialize;
+use serde_with::DeserializeFromStr;
+
+use crate::types::{Aperture, ExposureBias, ShutterSpeed};
 
 /// Outer `<data>` element
 #[derive(Clone, PartialEq, PartialOrd, Debug)]
@@ -25,7 +27,15 @@ pub(super) struct Data<'a> {
 #[serde(rename_all = "camelCase")]
 pub(super) struct Cameras<'a> {
     #[serde(default)]
-    pub camera: Vec<TextValue<'a>>,
+    pub camera: Vec<Camera<'a>>,
+}
+
+/// Camera container (`<camera>`)
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Deserialize, Default)]
+pub(super) struct Camera<'a> {
+    #[serde(rename = "$text")]
+    pub value: Text<'a>,
 }
 
 /// Lens list element (`<lenses>`)
@@ -34,7 +44,15 @@ pub(super) struct Cameras<'a> {
 #[serde(rename_all = "camelCase")]
 pub(super) struct Lenses<'a> {
     #[serde(default)]
-    pub lens: Vec<TextValue<'a>>,
+    pub lens: Vec<Lens<'a>>,
+}
+
+/// Lens container (`<lens>`)
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Deserialize, Default)]
+pub(super) struct Lens<'a> {
+    #[serde(rename = "$text")]
+    pub value: Text<'a>,
 }
 
 /// Accessory list element (`<accessories>`)
@@ -43,7 +61,15 @@ pub(super) struct Lenses<'a> {
 #[serde(rename_all = "camelCase")]
 pub(super) struct Accessories<'a> {
     #[serde(default)]
-    pub accessory: Vec<TextValue<'a>>,
+    pub accessory: Vec<Accessory<'a>>,
+}
+
+/// Accessory container (`<accessory>`)
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Deserialize, Default)]
+pub(super) struct Accessory<'a> {
+    #[serde(rename = "$text")]
+    pub value: Text<'a>,
 }
 
 /// Film roll list element (`<filmRolls>`)
@@ -60,12 +86,18 @@ pub(super) struct FilmRolls<'a> {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct FilmRoll<'a> {
-    pub title: TextValue<'a>,
-    pub speed: Value<u32>,
-    pub camera: TextValue<'a>,
-    pub load: DateValue,
-    pub unload: DateValue,
-    pub note: TextValue<'a>,
+    #[serde(with = "text_content")]
+    pub title: Option<Text<'a>>,
+    #[serde(with = "text_content")]
+    pub speed: u32,
+    #[serde(with = "text_content")]
+    pub camera: Option<Text<'a>>,
+    #[serde(with = "text_content")]
+    pub load: XmlDateTime,
+    #[serde(with = "text_content")]
+    pub unload: XmlDateTime,
+    #[serde(with = "text_content")]
+    pub note: Option<Text<'a>>,
     pub frames: Frames<'a>,
 }
 
@@ -83,73 +115,71 @@ pub(super) struct Frames<'a> {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct Frame<'a> {
-    pub lens: TextValue<'a>,
-    pub aperture: Value<rust_decimal::Decimal>,
-    pub shutter_speed: Value<num_rational::Rational32>,
-    pub compensation: Value<num_rational::Rational32>,
-    pub accessory: TextValue<'a>,
-    pub number: Value<usize>,
-    pub date: DateValue,
-    pub latitude: Value<f64>,
-    pub longitude: Value<f64>,
-    pub note: TextValue<'a>,
+    #[serde(with = "text_content")]
+    pub lens: Option<Text<'a>>,
+    #[serde(with = "text_content")]
+    pub aperture: Option<Aperture>,
+    #[serde(with = "text_content")]
+    pub shutter_speed: Option<ShutterSpeed>,
+    #[serde(with = "text_content")]
+    pub compensation: Option<ExposureBias>,
+    #[serde(with = "text_content")]
+    pub accessory: Option<Text<'a>>,
+    #[serde(with = "text_content")]
+    pub number: usize,
+    #[serde(with = "text_content")]
+    pub date: XmlDateTime,
+    #[serde(with = "text_content")]
+    pub latitude: f64,
+    #[serde(with = "text_content")]
+    pub longitude: f64,
+    #[serde(with = "text_content")]
+    pub note: Option<Text<'a>>,
 }
 
-/// Generic value wrapper
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Deserialize, Default)]
-pub(super) struct Value<T>
+/// Copy-on-write text value from the XML source
+pub type Text<'a> = std::borrow::Cow<'a, str>;
+
+/// Sloppy RFC3339 date/time type with lax parsing
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
+#[derive(DeserializeFromStr)]
+pub struct XmlDateTime(DateTime<FixedOffset>);
+
+impl<Tz> From<XmlDateTime> for DateTime<Tz>
 where
-    T: std::str::FromStr,
-    T::Err: std::fmt::Display,
+    Tz: chrono::TimeZone,
+    DateTime<Tz>: From<DateTime<FixedOffset>>,
 {
-    #[serde(default, rename = "$text", deserialize_with = "deserialize_from_str")]
-    pub value: T,
+    fn from(value: XmlDateTime) -> Self {
+        value.0.into()
+    }
 }
 
-/// Date value wrapper
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Deserialize, Default)]
-pub(super) struct DateValue {
-    #[serde(rename = "$text", deserialize_with = "deserialize_sloppy_rfc3339")]
-    pub value: DateTime<FixedOffset>,
-}
-
-/// String value wrapper
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Deserialize, Default)]
-pub(super) struct TextValue<'a> {
-    #[serde(default, rename = "$text")]
-    pub value: Cow<'a, str>,
-}
-
-/// Deserialize values using `FromStr::from_str`
-fn deserialize_from_str<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+impl<Tz> From<DateTime<Tz>> for XmlDateTime
 where
-    D: serde::Deserializer<'de>,
-    T: std::str::FromStr,
-    T::Err: std::fmt::Display,
+    Tz: chrono::TimeZone,
+    DateTime<FixedOffset>: From<DateTime<Tz>>,
 {
-    String::deserialize(deserializer)
-        .and_then(|s| T::from_str(&s).map_err(serde::de::Error::custom))
+    fn from(value: DateTime<Tz>) -> Self {
+        Self(value.into())
+    }
 }
 
-/// Deserialize dates from RFC3339 format with no offset
-fn deserialize_sloppy_rfc3339<'de, D>(deserializer: D) -> Result<DateTime<FixedOffset>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    DateTime::<FixedOffset>::parse_from_rfc3339(&s)
-        .or_else(|_| {
-            chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S%.f")
-                .map(|date| date.and_utc().into())
-        })
-        .or_else(|_| {
-            chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d") //
-                .map(|date| date.and_time(chrono::NaiveTime::default()).and_utc().into())
-        })
-        .map_err(serde::de::Error::custom)
+impl std::str::FromStr for XmlDateTime {
+    type Err = chrono::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        chrono::DateTime::<FixedOffset>::parse_from_rfc3339(&s)
+            .or_else(|_| {
+                chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S%.f")
+                    .map(|date| date.and_utc().into())
+            })
+            .or_else(|_| {
+                chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d")
+                    .map(|date| date.and_time(chrono::NaiveTime::default()).and_utc().into())
+            })
+            .map(Self)
+    }
 }
 
 #[cfg(test)]
@@ -162,85 +192,30 @@ mod tests {
     use rust_decimal::Decimal;
 
     #[test]
-    fn empty_values() -> Result<(), DeError> {
-        let xml = "<empty></empty>";
-        assert_eq!(from_str::<TextValue>(xml)?, Default::default());
-        assert_eq!(from_str::<Value<f64>>(xml)?, Default::default());
-        assert_eq!(from_str::<Value<Rational32>>(xml)?, Default::default());
-        assert_eq!(from_str::<Value<Decimal>>(xml)?, Default::default());
-        assert_eq!(from_str::<Value<u32>>(xml)?, Default::default());
-        assert_eq!(from_str::<Value<usize>>(xml)?, Default::default());
-        Ok(())
-    }
-
-    #[test]
-    fn filled_values() -> Result<(), DeError> {
+    fn parse_sloppy_rfc3339() -> Result<(), chrono::ParseError> {
+        use std::str::FromStr;
         assert_eq!(
-            from_str::<TextValue>("<value>Plain text value</value>")?,
-            TextValue {
-                value: "Plain text value".into()
-            },
+            XmlDateTime::from_str("2016-03-28T15:16:36Z")?.0,
+            chrono::Utc
+                .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
+                .unwrap()
         );
         assert_eq!(
-            from_str::<DateValue>("<value>2016-03-28T15:16:36Z</value>")?,
-            DateValue {
-                value: chrono::Utc
-                    .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
-                    .unwrap()
-                    .into()
-            }
+            XmlDateTime::from_str("2019-07-17T15:47:53.208630")?.0,
+            chrono::Utc
+                .with_ymd_and_hms(2019, 7, 17, 15, 47, 53)
+                .map(|date| date + chrono::Duration::microseconds(208630))
+                .unwrap()
         );
         assert_eq!(
-            from_str::<DateValue>("<value>2019-07-17T15:47:53.208630</value>")?,
-            DateValue {
-                value: chrono::Utc
-                    .with_ymd_and_hms(2019, 7, 17, 15, 47, 53)
-                    .map(|date| date + chrono::Duration::microseconds(208630))
-                    .unwrap()
-                    .into()
-            }
+            XmlDateTime::from_str("2019-07-17T15:47:53")?.0,
+            chrono::Utc
+                .with_ymd_and_hms(2019, 7, 17, 15, 47, 53)
+                .unwrap()
         );
         assert_eq!(
-            from_str::<DateValue>("<value>2019-07-17T15:47:53</value>")?,
-            DateValue {
-                value: chrono::Utc
-                    .with_ymd_and_hms(2019, 7, 17, 15, 47, 53)
-                    .unwrap()
-                    .into()
-            }
-        );
-        assert_eq!(
-            from_str::<DateValue>("<value>2019-07-17</value>")?,
-            DateValue {
-                value: chrono::Utc
-                    .with_ymd_and_hms(2019, 7, 17, 0, 0, 0)
-                    .unwrap()
-                    .into()
-            }
-        );
-        assert_eq!(
-            from_str::<Value<f64>>("<value>57.700767</value>")?,
-            Value { value: 57.700767 }
-        );
-        assert_eq!(
-            from_str::<Value<Rational32>>("<value>1/500</value>")?,
-            Value {
-                value: Rational32::new(1, 500)
-            }
-        );
-        assert_eq!(
-            from_str::<Value<Decimal>>("<value>5.6</value>")?,
-            Value {
-                value: Decimal::new(56, 1)
-            }
-        );
-        assert_eq!(
-            from_str::<Value<u32>>("<value>100</value>")?,
-            Value { value: 100 }
-        );
-        assert_eq!(
-            from_str::<Value<usize>>("<value>1</value>")?,
-            Value { value: 1 }
+            XmlDateTime::from_str("2019-07-17")?.0,
+            chrono::Utc.with_ymd_and_hms(2019, 7, 17, 0, 0, 0).unwrap()
         );
         Ok(())
     }
@@ -311,20 +286,20 @@ mod tests {
             Data {
                 cameras: Cameras {
                     camera: vec![
-                        TextValue {
+                        Camera {
                             value: "Yashica Electro 35 GT".into()
                         },
-                        TextValue {
+                        Camera {
                             value: "Voigtländer Bessa R2M".into()
                         },
                     ]
                 },
                 lenses: Lenses {
                     lens: vec![
-                        TextValue {
+                        Lens {
                             value: "Yashinon 45mm f/1.7".into()
                         },
-                        TextValue {
+                        Lens {
                             value: "Color Skopar 35/2.5 Pancake II".into()
                         },
                     ]
@@ -332,51 +307,33 @@ mod tests {
                 accessories: Accessories { accessory: vec![] },
                 film_rolls: FilmRolls {
                     film_roll: vec![FilmRoll {
-                        title: TextValue {
-                            value: "Ilford Delta 100".into()
-                        },
-                        speed: Value { value: 100 },
-                        camera: TextValue {
-                            value: "Voigtländer Bessa R2M".into()
-                        },
-                        load: DateValue {
-                            value: chrono::Utc
-                                .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
-                                .unwrap()
-                                .into()
-                        },
-                        unload: DateValue {
-                            value: chrono::Utc
-                                .with_ymd_and_hms(2016, 5, 21, 14, 13, 15)
-                                .unwrap()
-                                .into()
-                        },
-                        note: TextValue {
-                            value: "A0012".into()
-                        },
+                        title: Some("Ilford Delta 100".into()),
+                        speed: 100,
+                        camera: Some("Voigtländer Bessa R2M".into()),
+                        load: chrono::Utc
+                            .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
+                            .unwrap()
+                            .into(),
+                        unload: chrono::Utc
+                            .with_ymd_and_hms(2016, 5, 21, 14, 13, 15)
+                            .unwrap()
+                            .into(),
+                        note: Some("A0012".into()),
                         frames: Frames {
                             frame: vec![Frame {
-                                lens: TextValue {
-                                    value: "Color Skopar 35/2.5 Pancake II".into()
-                                },
-                                aperture: Value {
-                                    value: Decimal::new(56, 1)
-                                },
-                                shutter_speed: Value {
-                                    value: Rational32::new(1, 500)
-                                },
-                                compensation: Value::default(),
-                                accessory: TextValue::default(),
-                                number: Value { value: 1 },
-                                date: DateValue {
-                                    value: chrono::Utc
-                                        .with_ymd_and_hms(2016, 5, 13, 14, 12, 40)
-                                        .unwrap()
-                                        .into()
-                                },
-                                latitude: Value { value: 57.700767 },
-                                longitude: Value { value: 11.953715 },
-                                note: TextValue::default(),
+                                lens: Some("Color Skopar 35/2.5 Pancake II".into()),
+                                aperture: Some(Decimal::new(56, 1).into()),
+                                shutter_speed: Some(Rational32::new(1, 500).into()),
+                                compensation: None,
+                                accessory: None,
+                                number: 1,
+                                date: chrono::Utc
+                                    .with_ymd_and_hms(2016, 5, 13, 14, 12, 40)
+                                    .unwrap()
+                                    .into(),
+                                latitude: 57.700767,
+                                longitude: 11.953715,
+                                note: None,
                             }]
                         }
                     }]
