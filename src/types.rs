@@ -32,32 +32,44 @@ impl std::fmt::Display for Position {
     }
 }
 
-/// A shutter speed, in seconds
+/// A shutter speed setting
 ///
 /// As shutter speeds are commonly defined in terms of fractions,
 /// this type represents them using the `Ratio` type from the
 /// *num-rational* crate.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(DeserializeFromStr)]
-pub struct ShutterSpeed(num_rational::Rational32);
+pub enum ShutterSpeed {
+    /// Shutter speed, in seconds (manual or known)
+    Manual(num_rational::Rational32),
+
+    /// Unknown shutter speed, aperture priority
+    AperturePriority,
+}
 
 impl std::str::FromStr for ShutterSpeed {
     type Err = num_rational::ParseRatioError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        num_rational::Rational32::from_str(&s).map(Self)
+        match s {
+            "Av" => Ok(Self::AperturePriority),
+            value => num_rational::Rational32::from_str(&value).map(Self::Manual),
+        }
     }
 }
 
 impl From<num_rational::Rational32> for ShutterSpeed {
     fn from(value: num_rational::Rational32) -> Self {
-        Self(value)
+        Self::Manual(value)
     }
 }
 
 impl std::fmt::Display for ShutterSpeed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} s", self.0)
+        match self {
+            Self::Manual(value) => write!(f, "{} s", value),
+            Self::AperturePriority => write!(f, "Av"),
+        }
     }
 }
 
@@ -96,7 +108,7 @@ impl std::fmt::Display for ExposureBias {
     }
 }
 
-/// An aperture (f-stop) value
+/// An aperture (f-stop) setting
 ///
 /// Although apertures technically map to a series of (fractional)
 /// powers of the square root of two, this is an impractical way to
@@ -105,25 +117,39 @@ impl std::fmt::Display for ExposureBias {
 /// discarding information, this type uses `Decimal` instead.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(DeserializeFromStr)]
-pub struct Aperture(rust_decimal::Decimal);
+pub enum Aperture {
+    /// Aperture value, in f-stops (manual or known)
+    Manual(rust_decimal::Decimal),
+
+    /// Unknown aperture, shutter priority
+    ShutterPriority,
+}
 
 impl std::str::FromStr for Aperture {
     type Err = rust_decimal::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        rust_decimal::Decimal::from_str(&s).map(Self)
+        match s {
+            "Tv" | "S" => Ok(Self::ShutterPriority),
+            value => rust_decimal::Decimal::from_str(&value).map(Self::Manual),
+        }
     }
 }
 
 impl From<rust_decimal::Decimal> for Aperture {
     fn from(value: rust_decimal::Decimal) -> Self {
-        Self(value)
+        Self::Manual(value)
     }
 }
 
 impl std::fmt::Display for Aperture {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ƒ/{}", self.0.round_sf(2).unwrap_or(self.0).normalize())
+        match self {
+            Self::Manual(value) => {
+                write!(f, "ƒ/{}", value.round_sf(2).unwrap_or(*value).normalize())
+            }
+            Self::ShutterPriority => write!(f, "Tv"),
+        }
     }
 }
 
@@ -215,6 +241,7 @@ impl std::fmt::Display for FilmSpeed {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use num_rational::Ratio;
     use pretty_assertions::assert_eq;
     use rust_decimal_macros::dec;
 
@@ -313,5 +340,18 @@ mod tests {
             format!("{:.2}", position),
             "38° 53′ 22.92″ N, 77° 0′ 32.04″ W"
         );
+    }
+
+    #[test]
+    fn parse_shutter_speed() {
+        assert_eq!("Av".parse(), Ok(ShutterSpeed::AperturePriority));
+        assert_eq!("1/10".parse(), Ok(ShutterSpeed::Manual(Ratio::new(1, 10))));
+    }
+
+    #[test]
+    fn parse_aperture() {
+        assert_eq!("S".parse(), Ok(Aperture::ShutterPriority));
+        assert_eq!("Tv".parse(), Ok(Aperture::ShutterPriority));
+        assert_eq!("5.6".parse(), Ok(Aperture::Manual(dec!(5.6))));
     }
 }

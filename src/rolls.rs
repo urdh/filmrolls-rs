@@ -139,7 +139,7 @@ pub struct Frame {
     pub lens: Option<Lens>,
     pub aperture: Aperture,
     pub shutter_speed: ShutterSpeed,
-    pub compensation: ExposureBias,
+    pub compensation: Option<ExposureBias>,
     pub datetime: DateTime<FixedOffset>,
     pub position: Position,
     pub note: Option<String>,
@@ -158,20 +158,11 @@ impl TryFrom<filmrolls::Frame<'_>> for Frame {
                 .map_err(|_| SourceError::InvalidData("lens (`<lens>`)"))?,
             aperture: value
                 .aperture
-                .map(TryInto::try_into)
-                .ok_or(SourceError::MissingData("aperture (`<aperture>`)"))?
-                .map_err(|_| SourceError::InvalidData("aperture (`<aperture>`)"))?,
+                .ok_or(SourceError::MissingData("aperture (`<aperture>`)"))?,
             shutter_speed: value
                 .shutter_speed
-                .map(TryInto::try_into)
-                .ok_or(SourceError::MissingData("shutter speed (`<shutterSpeed>`)"))?
-                .map_err(|_| SourceError::InvalidData("shutter speed (`<shutterSpeed>`)"))?,
-            compensation: value
-                .compensation
-                .map(TryInto::try_into)
-                .transpose()
-                .map_err(|_| SourceError::InvalidData("compensation (`<compensation>`)"))?
-                .unwrap_or_default(),
+                .ok_or(SourceError::MissingData("shutter speed (`<shutterSpeed>`)"))?,
+            compensation: value.compensation,
             datetime: value.date.into(),
             position: Position {
                 lat: value.latitude,
@@ -401,10 +392,7 @@ mod tests {
             }),
             aperture: base_frame.aperture.map(Aperture::from).unwrap(),
             shutter_speed: base_frame.shutter_speed.map(ShutterSpeed::from).unwrap(),
-            compensation: base_frame
-                .compensation
-                .map(ExposureBias::from)
-                .unwrap_or_default(),
+            compensation: base_frame.compensation.map(ExposureBias::from),
             datetime: base_frame.date.clone().into(),
             position: Position {
                 lat: base_frame.latitude,

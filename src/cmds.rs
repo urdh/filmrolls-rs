@@ -93,7 +93,11 @@ where
                                 .unwrap_or_default(),
                             frame.aperture.to_string(),
                             frame.shutter_speed.to_string(),
-                            frame.compensation.to_string(),
+                            frame
+                                .compensation
+                                .as_ref()
+                                .map(ToString::to_string)
+                                .unwrap_or_default(),
                             frame.datetime.to_string(),
                             frame.position.to_string(),
                             frame
@@ -121,7 +125,6 @@ mod tests {
     use chrono::{DateTime, Utc};
     use itertools::assert_equal;
     use pretty_assertions::assert_eq;
-    use rust_decimal::prelude::Zero;
 
     fn get_test_roll() -> Result<Roll> {
         Ok(Roll {
@@ -137,7 +140,7 @@ mod tests {
                     lens: "Voigtländer Color Skopar 35/2.5 Pancake II".try_into().ok(),
                     aperture: Aperture::from(rust_decimal::Decimal::new(56, 1)),
                     shutter_speed: ShutterSpeed::from(num_rational::Ratio::new(1, 500)),
-                    compensation: ExposureBias::from(num_rational::Ratio::zero()),
+                    compensation: None,
                     datetime: DateTime::<Utc>::UNIX_EPOCH.into(),
                     position: Position {
                         lat: 57.700767,
