@@ -61,6 +61,7 @@ features = ["derive"]
 [dev-dependencies]
 pretty_assertions = "1.4"
 rust_decimal_macros = "1.33"
+trycmd = "0.14"
 
 [build-dependencies]
 shadow-rs = "0.26"

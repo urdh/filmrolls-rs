@@ -14,6 +14,29 @@ It is essentially a Rust rewrite of the [filmrolls gem][gem].
 The utility is released under the [ISC license](LICENSE.md).
 Eventually there will be some sort of [changelog](CHANGELOG.md) as well.
 
+## Usage
+
+At the moment, the utility only supports reading and displaying Film Rolls XML data. Using the
+`list-rolls` and `list-frames` sub-commands, you can explore the data to get a brief summary of
+the film rolls present:
+
+```console
+$ filmrolls list-rolls -r tests/data/filmrolls.xml
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ID      Frames   Film                         Camera                  Loaded                       Unloaded
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ A0012   1        Ilford Delta 100 @ 100/21°   Voigtländer Bessa R2M   2016-03-28 15:16:36 +00:00   2016-05-21 14:13:15 +00:00
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+$ filmrolls list-frames -r tests/data/filmrolls.xml -i A0012
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ #   Lens                             Aperture   Shutter   Comp.   Date                         Location                              Notes
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ 1   Color Skopar 35/2.5 Pancake II   ƒ/5.6      1/500 s   0 EV    2016-05-13 14:12:40 +00:00   57° 42′ 2.761″ N, 11° 57′ 13.374″ E
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+```
+
 [film-rolls]: https://itunes.apple.com/se/app/film-rolls-app-for-film-photographers/id675626559
 [lightme]: https://apps.apple.com/us/app/lightme-logbook/id1544518308
 
