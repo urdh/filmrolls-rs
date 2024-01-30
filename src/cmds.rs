@@ -91,8 +91,16 @@ where
                                 .as_ref()
                                 .map(ToString::to_string)
                                 .unwrap_or_default(),
-                            frame.aperture.to_string(),
-                            frame.shutter_speed.to_string(),
+                            frame
+                                .aperture
+                                .as_ref()
+                                .map(ToString::to_string)
+                                .unwrap_or_default(),
+                            frame
+                                .shutter_speed
+                                .as_ref()
+                                .map(ToString::to_string)
+                                .unwrap_or_default(),
                             frame
                                 .compensation
                                 .as_ref()
@@ -138,8 +146,8 @@ mod tests {
                 None,
                 Some(Frame {
                     lens: "Voigtländer Color Skopar 35/2.5 Pancake II".try_into().ok(),
-                    aperture: Aperture::from(rust_decimal::Decimal::new(56, 1)),
-                    shutter_speed: ShutterSpeed::from(num_rational::Ratio::new(1, 500)),
+                    aperture: Some(Aperture::from(rust_decimal::Decimal::new(56, 1))),
+                    shutter_speed: Some(ShutterSpeed::from(num_rational::Ratio::new(1, 500))),
                     compensation: None,
                     datetime: DateTime::<Utc>::UNIX_EPOCH.into(),
                     position: Position {

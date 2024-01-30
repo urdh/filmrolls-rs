@@ -137,8 +137,8 @@ impl std::fmt::Display for Lens {
 #[derive(Clone, PartialEq, Debug)]
 pub struct Frame {
     pub lens: Option<Lens>,
-    pub aperture: Aperture,
-    pub shutter_speed: ShutterSpeed,
+    pub aperture: Option<Aperture>,
+    pub shutter_speed: Option<ShutterSpeed>,
     pub compensation: Option<ExposureBias>,
     pub datetime: DateTime<FixedOffset>,
     pub position: Position,
@@ -156,12 +156,8 @@ impl TryFrom<filmrolls::Frame<'_>> for Frame {
                 .map(TryInto::try_into)
                 .transpose()
                 .map_err(|_| SourceError::InvalidData("lens (`<lens>`)"))?,
-            aperture: value
-                .aperture
-                .ok_or(SourceError::MissingData("aperture (`<aperture>`)"))?,
-            shutter_speed: value
-                .shutter_speed
-                .ok_or(SourceError::MissingData("shutter speed (`<shutterSpeed>`)"))?,
+            aperture: value.aperture,
+            shutter_speed: value.shutter_speed,
             compensation: value.compensation,
             datetime: value.date.into(),
             position: Position {
@@ -390,8 +386,8 @@ mod tests {
                 make: "Voigtländer".into(),
                 model: "Color Skopar 35/2.5 Pancake II".into(),
             }),
-            aperture: base_frame.aperture.map(Aperture::from).unwrap(),
-            shutter_speed: base_frame.shutter_speed.map(ShutterSpeed::from).unwrap(),
+            aperture: base_frame.aperture.map(Aperture::from),
+            shutter_speed: base_frame.shutter_speed.map(ShutterSpeed::from),
             compensation: base_frame.compensation.map(ExposureBias::from),
             datetime: base_frame.date.clone().into(),
             position: Position {
