@@ -379,7 +379,7 @@ mod tests {
             compensation: filmrolls::Value::default(),
             accessory: filmrolls::TextValue::default(),
             number: filmrolls::Value { value: 1 },
-            date: filmrolls::Value {
+            date: filmrolls::DateValue {
                 value: chrono::Utc
                     .with_ymd_and_hms(2016, 5, 13, 14, 12, 40)
                     .unwrap()
@@ -440,13 +440,13 @@ mod tests {
             camera: filmrolls::TextValue {
                 value: "Voigtländer Bessa R2M".into(),
             },
-            load: filmrolls::Value {
+            load: filmrolls::DateValue {
                 value: chrono::Utc
                     .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
                     .unwrap()
                     .into(),
             },
-            unload: filmrolls::Value {
+            unload: filmrolls::DateValue {
                 value: chrono::Utc
                     .with_ymd_and_hms(2016, 5, 21, 14, 13, 15)
                     .unwrap()

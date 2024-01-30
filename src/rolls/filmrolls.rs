@@ -63,8 +63,8 @@ pub(super) struct FilmRoll<'a> {
     pub title: TextValue<'a>,
     pub speed: Value<u32>,
     pub camera: TextValue<'a>,
-    pub load: Value<DateTime<FixedOffset>>,
-    pub unload: Value<DateTime<FixedOffset>>,
+    pub load: DateValue,
+    pub unload: DateValue,
     pub note: TextValue<'a>,
     pub frames: Frames<'a>,
 }
@@ -89,7 +89,7 @@ pub(super) struct Frame<'a> {
     pub compensation: Value<num_rational::Rational32>,
     pub accessory: TextValue<'a>,
     pub number: Value<usize>,
-    pub date: Value<DateTime<FixedOffset>>,
+    pub date: DateValue,
     pub latitude: Value<f64>,
     pub longitude: Value<f64>,
     pub note: TextValue<'a>,
@@ -105,6 +105,14 @@ where
 {
     #[serde(default, rename = "$text", deserialize_with = "deserialize_from_str")]
     pub value: T,
+}
+
+/// Date value wrapper
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Deserialize, Default)]
+pub(super) struct DateValue {
+    #[serde(rename = "$text", deserialize_with = "deserialize_sloppy_rfc3339")]
+    pub value: DateTime<FixedOffset>,
 }
 
 /// String value wrapper
@@ -126,6 +134,24 @@ where
         .and_then(|s| T::from_str(&s).map_err(serde::de::Error::custom))
 }
 
+/// Deserialize dates from RFC3339 format with no offset
+fn deserialize_sloppy_rfc3339<'de, D>(deserializer: D) -> Result<DateTime<FixedOffset>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    DateTime::<FixedOffset>::parse_from_rfc3339(&s)
+        .or_else(|_| {
+            chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S%.f")
+                .map(|date| date.and_utc().into())
+        })
+        .or_else(|_| {
+            chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d") //
+                .map(|date| date.and_time(chrono::NaiveTime::default()).and_utc().into())
+        })
+        .map_err(serde::de::Error::custom)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,13 +160,11 @@ mod tests {
     use pretty_assertions::assert_eq;
     use quick_xml::de::{from_str, DeError};
     use rust_decimal::Decimal;
-    type DateTime = chrono::DateTime<FixedOffset>;
 
     #[test]
     fn empty_values() -> Result<(), DeError> {
         let xml = "<empty></empty>";
         assert_eq!(from_str::<TextValue>(xml)?, Default::default());
-        assert_eq!(from_str::<Value<DateTime>>(xml)?, Default::default());
         assert_eq!(from_str::<Value<f64>>(xml)?, Default::default());
         assert_eq!(from_str::<Value<Rational32>>(xml)?, Default::default());
         assert_eq!(from_str::<Value<Decimal>>(xml)?, Default::default());
@@ -158,10 +182,38 @@ mod tests {
             },
         );
         assert_eq!(
-            from_str::<Value<DateTime>>("<value>2016-03-28T15:16:36Z</value>")?,
-            Value {
+            from_str::<DateValue>("<value>2016-03-28T15:16:36Z</value>")?,
+            DateValue {
                 value: chrono::Utc
                     .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
+                    .unwrap()
+                    .into()
+            }
+        );
+        assert_eq!(
+            from_str::<DateValue>("<value>2019-07-17T15:47:53.208630</value>")?,
+            DateValue {
+                value: chrono::Utc
+                    .with_ymd_and_hms(2019, 7, 17, 15, 47, 53)
+                    .map(|date| date + chrono::Duration::microseconds(208630))
+                    .unwrap()
+                    .into()
+            }
+        );
+        assert_eq!(
+            from_str::<DateValue>("<value>2019-07-17T15:47:53</value>")?,
+            DateValue {
+                value: chrono::Utc
+                    .with_ymd_and_hms(2019, 7, 17, 15, 47, 53)
+                    .unwrap()
+                    .into()
+            }
+        );
+        assert_eq!(
+            from_str::<DateValue>("<value>2019-07-17</value>")?,
+            DateValue {
+                value: chrono::Utc
+                    .with_ymd_and_hms(2019, 7, 17, 0, 0, 0)
                     .unwrap()
                     .into()
             }
@@ -287,13 +339,13 @@ mod tests {
                         camera: TextValue {
                             value: "Voigtländer Bessa R2M".into()
                         },
-                        load: Value {
+                        load: DateValue {
                             value: chrono::Utc
                                 .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
                                 .unwrap()
                                 .into()
                         },
-                        unload: Value {
+                        unload: DateValue {
                             value: chrono::Utc
                                 .with_ymd_and_hms(2016, 5, 21, 14, 13, 15)
                                 .unwrap()
@@ -316,7 +368,7 @@ mod tests {
                                 compensation: Value::default(),
                                 accessory: TextValue::default(),
                                 number: Value { value: 1 },
-                                date: Value {
+                                date: DateValue {
                                     value: chrono::Utc
                                         .with_ymd_and_hms(2016, 5, 13, 14, 12, 40)
                                         .unwrap()
