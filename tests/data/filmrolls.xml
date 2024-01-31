@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<data xmlns="http://www.w3schools.com"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.w3schools.com export.xsd">
+  <cameras>
+    <camera>Yashica Electro 35 GT</camera>
+    <camera>Voigtländer Bessa R2M</camera>
+  </cameras>
+  <lenses>
+    <lens>Yashinon 45mm f/1.7</lens>
+    <lens>Color Skopar 35/2.5 Pancake II</lens>
+  </lenses>
+  <accessories>
+  </accessories>
+  <filmRolls>
+    <filmRoll>
+      <title>Ilford Delta 100</title>
+      <speed>100</speed>
+      <camera>Voigtländer Bessa R2M</camera>
+      <load>2016-03-28T15:16:36Z</load>
+      <unload>2016-05-21T14:13:15Z</unload>
+      <note>A0012</note>
+      <frames>
+        <frame>
+          <lens>Color Skopar 35/2.5 Pancake II</lens>
+          <aperture>5.6</aperture>
+          <shutterSpeed>1/500</shutterSpeed>
+          <compensation></compensation>
+          <accessory></accessory>
+          <number>1</number>
+          <date>2016-05-13T14:12:40Z</date>
+          <latitude>57.700767</latitude>
+          <longitude>11.953715</longitude>
+          <note></note>
+        </frame>
+      </frames>
+    </filmRoll>
+  </filmRolls>
+</data>
