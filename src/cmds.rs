@@ -72,14 +72,15 @@ where
             Ok(roll) if roll.id == id => {
                 let mut table = Table::new();
                 table.set_header(vec![
-                    "#",        // frame_nbr
-                    "Lens",     // frame.lens
-                    "Aperture", // frame.aperture
-                    "Shutter",  // frame.shutter_speed
-                    "Comp.",    // frame.compensation
-                    "Date",     // frame.datetime
-                    "Location", // frame.position
-                    "Notes",    // frame.note
+                    "#",          // frame_nbr
+                    "Lens",       // frame.lens
+                    "Focal len.", // frame.focal_length
+                    "Aperture",   // frame.aperture
+                    "Shutter",    // frame.shutter_speed
+                    "Comp.",      // frame.compensation
+                    "Date",       // frame.datetime
+                    "Location",   // frame.position
+                    "Notes",      // frame.note
                 ]);
                 table.add_rows(roll.frames.into_iter().enumerate().map(|(idx, frame)| {
                     let frame_nbr = idx + 1;
@@ -88,6 +89,11 @@ where
                             frame_nbr.to_string(), //
                             frame
                                 .lens
+                                .as_ref()
+                                .map(ToString::to_string)
+                                .unwrap_or_default(),
+                            frame
+                                .focal_length
                                 .as_ref()
                                 .map(ToString::to_string)
                                 .unwrap_or_default(),
@@ -148,6 +154,7 @@ mod tests {
                     lens: "Voigtländer Color Skopar 35/2.5 Pancake II".try_into().ok(),
                     aperture: Some(Aperture::from(rust_decimal::Decimal::new(56, 1))),
                     shutter_speed: Some(ShutterSpeed::from(num_rational::Ratio::new(1, 500))),
+                    focal_length: None,
                     compensation: None,
                     datetime: DateTime::<Utc>::UNIX_EPOCH.into(),
                     position: Position {
@@ -200,9 +207,9 @@ mod tests {
         let mut table = list_frames(std::iter::once(get_test_roll()), "A0012")
             .expect("an iterator with no errors should not propagate any errors")
             .expect("when there's a matching frame, the result is not `None`");
-        assert_eq!(table.column_count(), 8);
+        assert_eq!(table.column_count(), 9);
         assert_eq!(table.row_count(), 3);
-        assert_equal(table.row_iter().map(Row::cell_count), vec![1, 8, 1]);
+        assert_equal(table.row_iter().map(Row::cell_count), vec![1, 9, 1]);
     }
 
     #[test]
