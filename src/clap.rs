@@ -78,47 +78,36 @@ struct GlobalOpts {
 #[derive(Args)]
 #[group(required = true, multiple = false)]
 struct FilmRoll {
-    /// Film Rolls XML file
-    #[clap(long, short = 'r', value_parser, value_name = "FILE")]
-    film_rolls: Option<clio::Input>,
-
-    /// Lightme JSON file
-    #[clap(long, short = 'l', value_parser, value_name = "FILE")]
-    lightme: Option<clio::Input>,
+    /// Input film roll data file(s)
+    #[clap(value_parser)]
+    files: Vec<clio::Input>,
 }
 
 impl FilmRoll {
     /// Read & parse the given film roll data file
     fn into_rolls(self) -> impl Iterator<Item = Result<rolls::Roll>> {
-        None.or_else(|| {
-            self.film_rolls
-                .map(|input| {
-                    let path = input.path().clone();
-                    (BufReader::new(input), path)
-                })
-                .map(|(reader, path)| (rolls::from_filmrolls(reader), path))
-                .map(|(iter, path)| {
-                    iter.map(move |result| {
-                        result.wrap_err_with(|| format!("Failed to read roll data from {path}"))
+        self.files
+            .into_iter()
+            .map(|input| {
+                let path = input.path().path();
+                let reader = BufReader::new(input.clone());
+                use rolls::SourceError::UnsupportedFormat;
+                match mime_guess::from_path(path)
+                    .first_or_octet_stream()
+                    .essence_str()
+                {
+                    "text/xml" => RollIter::XmlSource(rolls::from_filmrolls(reader)),
+                    "application/json" => RollIter::JsonSource(rolls::from_lightme(reader)),
+                    mime => RollIter::from_error(UnsupportedFormat(mime.to_owned())),
+                }
+                .map(move |result| -> Result<rolls::Roll> {
+                    result.wrap_err_with(|| {
+                        format!("Failed to read roll data from {}", path.display())
                     })
                 })
-                .map(RollIter::XmlSource)
-        })
-        .or_else(|| {
-            self.lightme
-                .map(|input| {
-                    let path = input.path().clone();
-                    (BufReader::new(input), path)
-                })
-                .map(|(reader, path)| (rolls::from_lightme(reader), path))
-                .map(|(iter, path)| {
-                    iter.map(move |result| {
-                        result.wrap_err_with(|| format!("Failed to read roll data from {path}"))
-                    })
-                })
-                .map(RollIter::JsonSource)
-        })
-        .unwrap_or(RollIter::NoSource(std::iter::empty()))
+                .collect::<Vec<_>>()
+            })
+            .flatten()
     }
 }
 
@@ -173,28 +162,38 @@ impl Commands {
     }
 }
 
-enum RollIter<T, XmlIter, JsonIter>
+enum RollIter<E, XmlIter, JsonIter>
 where
-    XmlIter: Iterator<Item = T>,
-    JsonIter: Iterator<Item = T>,
+    XmlIter: Iterator<Item = Result<rolls::Roll, E>>,
+    JsonIter: Iterator<Item = Result<rolls::Roll, E>>,
 {
     XmlSource(XmlIter),
     JsonSource(JsonIter),
-    NoSource(std::iter::Empty<T>),
+    Error(std::iter::Once<Result<rolls::Roll, E>>),
 }
 
-impl<T, XmlIter, JsonIter> Iterator for RollIter<T, XmlIter, JsonIter>
+impl<E, XmlIter, JsonIter> RollIter<E, XmlIter, JsonIter>
 where
-    XmlIter: Iterator<Item = T>,
-    JsonIter: Iterator<Item = T>,
+    XmlIter: Iterator<Item = Result<rolls::Roll, E>>,
+    JsonIter: Iterator<Item = Result<rolls::Roll, E>>,
 {
-    type Item = T;
+    pub fn from_error(error: E) -> Self {
+        Self::Error(std::iter::once(Err(error)))
+    }
+}
+
+impl<E, XmlIter, JsonIter> Iterator for RollIter<E, XmlIter, JsonIter>
+where
+    XmlIter: Iterator<Item = Result<rolls::Roll, E>>,
+    JsonIter: Iterator<Item = Result<rolls::Roll, E>>,
+{
+    type Item = Result<rolls::Roll, E>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::XmlSource(iter) => iter.next(),
             Self::JsonSource(iter) => iter.next(),
-            Self::NoSource(iter) => iter.next(),
+            Self::Error(iter) => iter.next(),
         }
     }
 }
