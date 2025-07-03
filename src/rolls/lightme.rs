@@ -21,7 +21,9 @@ pub(super) struct Frame<'a> {
     pub exposure_time: Option<ShutterSpeed>,
     #[serde_as(as = "Option<f64>")]
     pub f_number: Option<Aperture>,
-    pub focal_length: usize,
+    pub focal_length: Option<f64>,
+    #[serde(alias = "FocalLengthIn35mmFormat")]
+    pub focal_length_equiv: Option<f64>,
     #[serde(alias = "GPSLatitude", deserialize_with = "deserialize_gps_coord")]
     pub gps_latitude: f64,
     #[serde(alias = "GPSLongitude", deserialize_with = "deserialize_gps_coord")]
@@ -225,7 +227,8 @@ mod tests {
                 document_name: Some("Ilford SFX 200".into()),
                 exposure_time: Some(Rational32::new(1, 125).into()),
                 f_number: Some(Decimal::new(8, 0).into()),
-                focal_length: 35,
+                focal_length: Some(35.),
+                focal_length_equiv: Some(35.),
                 gps_latitude: 57.700833333333335,
                 gps_longitude: 11.974166666666667,
                 image_number: 1,

@@ -149,6 +149,7 @@ pub struct Frame {
     pub lens: Option<Lens>,
     pub aperture: Option<Aperture>,
     pub shutter_speed: Option<ShutterSpeed>,
+    pub focal_length: Option<FocalLength>,
     pub compensation: Option<ExposureBias>,
     pub datetime: DateTime<FixedOffset>,
     pub position: Position,
@@ -168,6 +169,7 @@ impl TryFrom<filmrolls::Frame<'_>> for Frame {
                 .map_err(|_| SourceError::InvalidData("lens (`<lens>`)"))?,
             aperture: value.aperture,
             shutter_speed: value.shutter_speed,
+            focal_length: None,
             compensation: value.compensation,
             datetime: value.date.into(),
             position: Position {
@@ -194,6 +196,12 @@ impl TryFrom<lightme::Frame<'_>> for Frame {
             })(),
             aperture: value.f_number,
             shutter_speed: value.exposure_time,
+            focal_length: (|| {
+                Some(FocalLength {
+                    real: value.focal_length.and_then(|v| v.try_into().ok())?,
+                    equiv: value.focal_length_equiv.and_then(|v| v.try_into().ok()),
+                })
+            })(),
             compensation: None,
             datetime: value.date_time_original.into(),
             position: Position {
@@ -484,6 +492,7 @@ mod tests {
             }),
             aperture: base_frame.aperture.map(Aperture::from),
             shutter_speed: base_frame.shutter_speed.map(ShutterSpeed::from),
+            focal_length: None,
             compensation: base_frame.compensation.map(ExposureBias::from),
             datetime: base_frame.date.clone().into(),
             position: Position {
@@ -594,7 +603,8 @@ mod tests {
             document_name: Some("Ilford SFX 200".into()),
             exposure_time: Some(num_rational::Rational32::new(1, 125).into()),
             f_number: Some(rust_decimal::Decimal::new(8, 0).into()),
-            focal_length: 35,
+            focal_length: Some(35.),
+            focal_length_equiv: Some(35.),
             gps_latitude: 57.700833333333335,
             gps_longitude: 11.974166666666667,
             image_number: 1,
@@ -622,6 +632,10 @@ mod tests {
             }),
             aperture: base_frame.f_number.map(Aperture::from),
             shutter_speed: base_frame.exposure_time.map(ShutterSpeed::from),
+            focal_length: Some(FocalLength {
+                real: rust_decimal::Decimal::new(35, 0),
+                equiv: Some(rust_decimal::Decimal::new(35, 0)),
+            }),
             compensation: None,
             datetime: base_frame.date_time_original.clone().into(),
             position: Position {
@@ -655,6 +669,29 @@ mod tests {
                 ..expected.clone()
             })
         );
+        assert_eq!(
+            Frame::try_from(lightme::Frame {
+                focal_length_equiv: None,
+                ..base_frame.clone()
+            }),
+            Ok(Frame {
+                focal_length: Some(FocalLength {
+                    real: rust_decimal::Decimal::new(35, 0),
+                    equiv: None,
+                }),
+                ..expected.clone()
+            })
+        );
+        assert_eq!(
+            Frame::try_from(lightme::Frame {
+                focal_length: None,
+                ..base_frame.clone()
+            }),
+            Ok(Frame {
+                focal_length: None,
+                ..expected.clone()
+            })
+        );
     }
 
     #[test]
@@ -668,7 +705,8 @@ mod tests {
             document_name: Some("Ilford SFX 200".into()),
             exposure_time: Some(num_rational::Rational32::new(1, 125).into()),
             f_number: Some(rust_decimal::Decimal::new(8, 0).into()),
-            focal_length: 35,
+            focal_length: Some(35.),
+            focal_length_equiv: Some(35.),
             gps_latitude: 57.700833333333335,
             gps_longitude: 11.974166666666667,
             image_number: 1,
@@ -706,6 +744,10 @@ mod tests {
                 }),
                 aperture: base_frame.f_number.map(Aperture::from),
                 shutter_speed: base_frame.exposure_time.map(ShutterSpeed::from),
+                focal_length: Some(FocalLength {
+                    real: rust_decimal::Decimal::new(35, 0),
+                    equiv: Some(rust_decimal::Decimal::new(35, 0)),
+                }),
                 compensation: None,
                 datetime: base_frame.date_time_original.clone().into(),
                 position: Position {

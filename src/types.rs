@@ -36,6 +36,20 @@ impl std::fmt::Display for Position {
     }
 }
 
+/// A focal length (both real and 35mm equivalent)
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+pub struct FocalLength {
+    pub real: rust_decimal::Decimal,
+    pub equiv: Option<rust_decimal::Decimal>,
+}
+
+impl std::fmt::Display for FocalLength {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let real = self.real;
+        write!(f, "{} mm", real.round_sf(2).unwrap_or(real).normalize())
+    }
+}
+
 /// A shutter speed setting
 ///
 /// As shutter speeds are commonly defined in terms of fractions,
