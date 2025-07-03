@@ -33,6 +33,10 @@ pub enum SourceError {
     /// Invalid input data
     #[error("Invalid data: {0}")]
     InvalidData(&'static str),
+
+    /// Unsupported file format
+    #[error("Unsupported format: {0}")]
+    UnsupportedFormat(String),
 }
 
 impl PartialEq for SourceError {
