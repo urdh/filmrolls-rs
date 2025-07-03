@@ -3,6 +3,7 @@ use std::string::ToString;
 
 use color_eyre::eyre::Result;
 use comfy_table::{Row, Table};
+use itertools::Itertools;
 
 use crate::rolls;
 
@@ -28,28 +29,30 @@ where
         "Loaded",   // roll.load
         "Unloaded", // roll.unload
     ]);
-    rolls.try_fold(table, |mut table, roll| {
-        let roll = roll?;
-        table.add_row(vec![
-            roll.id.to_string(),
-            roll.frames.len().to_string(),
-            format!(
-                "{} @ {}",
-                roll.film
+    rolls
+        .sorted_by_cached_key(|roll| roll.as_ref().map(|r| r.id.clone()).unwrap_or_default())
+        .try_fold(table, |mut table, roll| {
+            let roll = roll?;
+            table.add_row(vec![
+                roll.id.to_string(),
+                roll.frames.len().to_string(),
+                format!(
+                    "{} @ {}",
+                    roll.film
+                        .as_ref()
+                        .map(ToString::to_string)
+                        .unwrap_or_default(),
+                    roll.speed
+                ),
+                roll.camera
                     .as_ref()
                     .map(ToString::to_string)
                     .unwrap_or_default(),
-                roll.speed
-            ),
-            roll.camera
-                .as_ref()
-                .map(ToString::to_string)
-                .unwrap_or_default(),
-            roll.load.to_string(),
-            roll.unload.to_string(),
-        ]);
-        Ok(table)
-    })
+                roll.load.to_string(),
+                roll.unload.to_string(),
+            ]);
+            Ok(table)
+        })
 }
 
 /// Generate a `Table` containing information about a given roll
