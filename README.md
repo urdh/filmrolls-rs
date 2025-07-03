@@ -1,6 +1,6 @@
 # Film Rolls EXIF tagger
 
-[![Github](https://img.shields.io/badge/github-urdh/filmrolls--rs-8da0cb?style=flat-square&labelColor=555555&logo=github)](https://github.com/dtolnay/cargo-expand)
+[![Github](https://img.shields.io/badge/github-urdh/filmrolls--rs-8da0cb?style=flat-square&labelColor=555555&logo=github)][github]
 [![Crate](https://img.shields.io/crates/v/filmrolls?style=flat-square&color=fc8d62&logo=rust)][release]
 [![License](https://img.shields.io/github/license/urdh/filmrolls-rs?style=flat-square)](LICENSE.md)
 [![Workflow](https://img.shields.io/github/actions/workflow/status/urdh/filmrolls-rs/push.yml?style=flat-square)][build]
@@ -8,7 +8,7 @@
 
 This is a utility designed to read the XML files used by the [Film Rolls iOS app][film-rolls],
 and enable batch EXIF tagging of scanned negatives in TIFF format based on the information in
-these XML files. Support for [Lightme Logbook][lightme] JSON data is also planned.
+these XML files. Support for [Lightme Logbook][lightme] JSON data is also implemented.
 It is essentially a Rust rewrite of the [filmrolls gem][gem].
 
 The utility is released under the [ISC license](LICENSE.md).

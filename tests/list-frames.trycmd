@@ -13,6 +13,19 @@ $ filmrolls list-frames -r tests/data/filmrolls.xml -i A0012
 
 ```
 
+## Successfully listing frames in a roll from JSON
+
+```console
+$ filmrolls list-frames -l tests/data/lightme.json -i A0020
+? success
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ #   Lens                                             Aperture   Shutter   Comp.   Date                         Location                              Notes
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ 1   Voigtländer 35mm f/2,5 Color Skopar Pancake II   ƒ/8        1/125 s           2022-04-30 18:29:15 +00:00   57° 42′ 3.000″ N, 11° 58′ 27.000″ E
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+```
+
 ## Trying to list frames from a non-existent roll
 
 ```console
@@ -30,7 +43,7 @@ $ filmrolls list-frames -r tests/data/filmrolls.xml
 error: the following required arguments were not provided:
   --id <ID>
 
-Usage: filmrolls list-frames --id <ID> <--film-rolls <FILE>>
+Usage: filmrolls list-frames --id <ID> <--film-rolls <FILE>|--lightme <FILE>>
 
 For more information, try '--help'.
 
@@ -43,7 +56,20 @@ $ filmrolls list-frames --color=never -r /path/which/does/not/exist.xml -i A0012
 ? failed
 error: Invalid value for --film-rolls <FILE>: Could not open "/path/which/does/not/exist.xml": No such file or directory (os error 2)
 
-Usage: filmrolls list-frames [OPTIONS] --id <ID> <--film-rolls <FILE>>
+Usage: filmrolls list-frames [OPTIONS] --id <ID> <--film-rolls <FILE>|--lightme <FILE>>
+
+For more information, try '--help'.
+
+```
+
+## Trying to use a non-existent JSON file
+
+```console
+$ filmrolls list-frames --color=never -l /path/which/does/not/exist.json -i A0012
+? failed
+error: Invalid value for --lightme <FILE>: Could not open "/path/which/does/not/exist.json": No such file or directory (os error 2)
+
+Usage: filmrolls list-frames [OPTIONS] --id <ID> <--film-rolls <FILE>|--lightme <FILE>>
 
 For more information, try '--help'.
 
@@ -57,6 +83,20 @@ $ filmrolls list-frames --color=never -r /dev/null -i A0012
 Error: 
    0: Failed to read roll data from "/dev/null"
    1: Unexpected `Event::Eof`
+
+Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
+Run with RUST_BACKTRACE=full to include source snippets.
+
+```
+
+## Trying to use a garbage JSON file
+
+```console
+$ filmrolls list-frames --color=never -l /dev/null -i A0012
+? failed
+Error: 
+   0: Failed to read roll data from "/dev/null"
+   1: EOF while parsing a value at line 1 column 0
 
 Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
 Run with RUST_BACKTRACE=full to include source snippets.

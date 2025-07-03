@@ -81,6 +81,10 @@ struct FilmRoll {
     /// Film Rolls XML file
     #[clap(long, short = 'r', value_parser, value_name = "FILE")]
     film_rolls: Option<clio::Input>,
+
+    /// Lightme JSON file
+    #[clap(long, short = 'l', value_parser, value_name = "FILE")]
+    lightme: Option<clio::Input>,
 }
 
 impl FilmRoll {
@@ -99,6 +103,20 @@ impl FilmRoll {
                     })
                 })
                 .map(RollIter::XmlSource)
+        })
+        .or_else(|| {
+            self.lightme
+                .map(|input| {
+                    let path = input.path().clone();
+                    (BufReader::new(input), path)
+                })
+                .map(|(reader, path)| (rolls::from_lightme(reader), path))
+                .map(|(iter, path)| {
+                    iter.map(move |result| {
+                        result.wrap_err_with(|| format!("Failed to read roll data from {path}"))
+                    })
+                })
+                .map(RollIter::JsonSource)
         })
         .unwrap_or(RollIter::NoSource(std::iter::empty()))
     }
@@ -155,23 +173,27 @@ impl Commands {
     }
 }
 
-enum RollIter<T, XmlIter>
+enum RollIter<T, XmlIter, JsonIter>
 where
     XmlIter: Iterator<Item = T>,
+    JsonIter: Iterator<Item = T>,
 {
     XmlSource(XmlIter),
+    JsonSource(JsonIter),
     NoSource(std::iter::Empty<T>),
 }
 
-impl<T, XmlIter> Iterator for RollIter<T, XmlIter>
+impl<T, XmlIter, JsonIter> Iterator for RollIter<T, XmlIter, JsonIter>
 where
     XmlIter: Iterator<Item = T>,
+    JsonIter: Iterator<Item = T>,
 {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::XmlSource(iter) => iter.next(),
+            Self::JsonSource(iter) => iter.next(),
             Self::NoSource(iter) => iter.next(),
         }
     }
