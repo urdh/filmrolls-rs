@@ -1,0 +1,31 @@
+[
+  {
+    "DateTimeOriginal" : "2022:04:30 18:29:15",
+    "Description" : "Ilford SFX 200 (135)",
+    "DocumentName" : "Ilford SFX 200",
+    "ExposureTime" : 0.008,
+    "FileSource" : 1,
+    "FNumber" : 8,
+    "FocalLength" : 35,
+    "FocalLengthIn35mmFormat" : 35,
+    "GPSLatitude" : "57deg 42' 3\" N",
+    "GPSLatitudeRef" : "North",
+    "GPSLongitude" : "11deg 58' 27\" E",
+    "GPSLongitudeRef" : "East",
+    "ImageNumber" : 1,
+    "ImageUniqueId" : "A0020_1",
+    "ISO" : 200,
+    "ISOSpeed" : 200,
+    "LensMake" : "Voigtländer",
+    "LensModel" : "35mm f\/2,5 Color Skopar Pancake II (35mm)",
+    "Make" : "Voigtländer",
+    "Model" : "Bessa R2M (Voigtländer)",
+    "Notes" : "",
+    "ReelName" : "A0020",
+    "SensitivityType" : 3,
+    "Software" : "Lightme - Logbook 2.2.3",
+    "SourceFile" : ".\/1.",
+    "SpectralSensitivity" : "Ilford SFX 200",
+    "UserComment" : "roll_notes:\n \ndev_notes:\n \nload_date:\n30 Apr 2022 at 17:57\nunload_date:\n1 May 2022 at 15:12"
+  }
+]

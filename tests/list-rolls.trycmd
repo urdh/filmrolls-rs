@@ -13,6 +13,19 @@ $ filmrolls list-rolls -r tests/data/filmrolls.xml
 
 ```
 
+## Successfully listing all rolls from JSON
+
+```console
+$ filmrolls list-rolls -l tests/data/lightme.json
+? success
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ID      Frames   Film                       Camera                  Loaded                       Unloaded
+═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ A0020   1        Ilford SFX 200 @ 200/24°   Voigtländer Bessa R2M   2022-04-30 17:57:00 +00:00   2022-05-01 15:12:00 +00:00
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+```
+
 ## Trying to use a non-existent XML file
 
 ```console
@@ -20,7 +33,20 @@ $ filmrolls list-rolls --color=never -r /path/which/does/not/exist.xml
 ? failed
 error: Invalid value for --film-rolls <FILE>: Could not open "/path/which/does/not/exist.xml": No such file or directory (os error 2)
 
-Usage: filmrolls list-rolls [OPTIONS] <--film-rolls <FILE>>
+Usage: filmrolls list-rolls [OPTIONS] <--film-rolls <FILE>|--lightme <FILE>>
+
+For more information, try '--help'.
+
+```
+
+## Trying to use a non-existent JSON file
+
+```console
+$ filmrolls list-rolls --color=never -l /path/which/does/not/exist.json
+? failed
+error: Invalid value for --lightme <FILE>: Could not open "/path/which/does/not/exist.json": No such file or directory (os error 2)
+
+Usage: filmrolls list-rolls [OPTIONS] <--film-rolls <FILE>|--lightme <FILE>>
 
 For more information, try '--help'.
 
@@ -34,6 +60,20 @@ $ filmrolls list-rolls --color=never -r /dev/null
 Error: 
    0: Failed to read roll data from "/dev/null"
    1: Unexpected `Event::Eof`
+
+Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
+Run with RUST_BACKTRACE=full to include source snippets.
+
+```
+
+## Trying to use a garbage JSON file
+
+```console
+$ filmrolls list-rolls --color=never -l /dev/null
+? failed
+Error: 
+   0: Failed to read roll data from "/dev/null"
+   1: EOF while parsing a value at line 1 column 0
 
 Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
 Run with RUST_BACKTRACE=full to include source snippets.

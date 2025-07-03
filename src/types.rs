@@ -1,8 +1,12 @@
 //! Generic photography-related types
 use std::num::{NonZeroU8, TryFromIntError};
 
-use rust_decimal::{prelude::Zero, Decimal, MathematicalOps};
-use serde_with::DeserializeFromStr;
+use rust_decimal::{
+    prelude::{FromPrimitive, Zero},
+    Decimal, MathematicalOps,
+};
+use serde::{Deserialize, Deserializer};
+use serde_with::{DeserializeAs, DeserializeFromStr};
 
 /// A geographical position
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
@@ -45,6 +49,19 @@ pub enum ShutterSpeed {
 
     /// Unknown shutter speed, aperture priority
     AperturePriority,
+}
+
+impl<'de> DeserializeAs<'de, ShutterSpeed> for f64 {
+    fn deserialize_as<D>(deserializer: D) -> Result<ShutterSpeed, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+        f64::deserialize(deserializer)
+            .map(num_rational::Rational32::from_f64)
+            .and_then(|v| v.ok_or(Error::custom("Rational32::from_f64 failed")))
+            .map(ShutterSpeed::Manual)
+    }
 }
 
 impl std::str::FromStr for ShutterSpeed {
@@ -123,6 +140,19 @@ pub enum Aperture {
 
     /// Unknown aperture, shutter priority
     ShutterPriority,
+}
+
+impl<'de> DeserializeAs<'de, Aperture> for f64 {
+    fn deserialize_as<D>(deserializer: D) -> Result<Aperture, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+        f64::deserialize(deserializer)
+            .map(rust_decimal::Decimal::try_from)
+            .and_then(|v| v.map_err(D::Error::custom))
+            .map(Aperture::Manual)
+    }
 }
 
 impl std::str::FromStr for Aperture {

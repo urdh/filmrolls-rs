@@ -7,18 +7,24 @@ use std::str::FromStr;
 
 use chrono::{DateTime, FixedOffset};
 use itertools::Itertools;
+use lazy_regex::regex_replace;
 use serde_with::DeserializeFromStr;
 
 use crate::types::*;
 mod filmrolls;
+mod lightme;
 
 /// Data deserialization errors
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 #[derive(thiserror::Error)]
 pub enum SourceError {
     /// Invalid XML input
     #[error(transparent)]
     InvalidXml(#[from] quick_xml::de::DeError),
+
+    /// Invalid JSON input
+    #[error(transparent)]
+    InvalidJson(#[from] serde_json::error::Error),
 
     /// Missing input data
     #[error("Missing data: {0}")]
@@ -169,6 +175,32 @@ impl TryFrom<filmrolls::Frame<'_>> for Frame {
     }
 }
 
+impl TryFrom<lightme::Frame<'_>> for Frame {
+    type Error = SourceError;
+
+    fn try_from(value: lightme::Frame<'_>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            lens: (|| {
+                Some(Lens {
+                    make: value.lens_make.map(Into::into).unwrap_or_default(),
+                    model: value
+                        .lens_model
+                        .map(|v| regex_replace!(r"(\s+\(.*?\))$", v.as_ref(), "").into_owned())?,
+                })
+            })(),
+            aperture: value.f_number,
+            shutter_speed: value.exposure_time,
+            compensation: None,
+            datetime: value.date_time_original.into(),
+            position: Position {
+                lat: value.gps_latitude,
+                lon: value.gps_longitude,
+            },
+            note: None,
+        })
+    }
+}
+
 /// A complete film roll
 ///
 /// The film roll contains a `Vec<Option<Frame>>`, which includes all
@@ -226,12 +258,55 @@ impl TryFrom<filmrolls::FilmRoll<'_>> for Roll {
     }
 }
 
+impl TryFrom<lightme::Data<'_>> for Roll {
+    type Error = SourceError;
+
+    fn try_from(value: lightme::Data) -> Result<Self, Self::Error> {
+        let first = value
+            .first()
+            .ok_or(SourceError::MissingData("empty roll"))?
+            .clone();
+        let comment = first
+            .user_comment
+            .ok_or(SourceError::MissingData("load/unload date (`UserComment`)"))?;
+        Ok(Self {
+            id: first
+                .reel_name
+                .map(Into::into)
+                .ok_or(SourceError::MissingData("roll ID (`ReelName`)"))?,
+            film: first
+                .document_name
+                .as_deref()
+                .map(TryInto::try_into)
+                .transpose()
+                .map_err(|_| SourceError::InvalidData("film (`DocumentName`)"))?,
+            speed: FilmSpeed::from_iso(first.iso_speed.into())
+                .map_err(|_| SourceError::InvalidData("film speed (`ISOSpeed`)"))?,
+            camera: (|| {
+                Some(Camera {
+                    make: first.make.map(Into::into).unwrap_or_default(),
+                    model: first
+                        .model
+                        .map(|v| regex_replace!(r"(\s+\(.*?\))$", v.as_ref(), "").into_owned())?,
+                })
+            })(),
+            load: comment.load_date.into(),
+            unload: comment.unload_date.into(),
+            frames: expand_indexed(value.into_iter().map(|frame| -> (usize, Result<Frame, _>) {
+                (frame.image_number, frame.try_into())
+            }))
+            .map(Option::transpose)
+            .try_collect()?,
+        })
+    }
+}
+
 /// Read Film Rolls iOS app XML data
 ///
 /// Attempts to read film roll data from the Film Rolls iOS app using the provided
 /// [quick-xml](https://docs.rs/quick-xml/latest/quick_xml/) reader. If a parsing
 /// error occurs, or any data is missing or invalid, the resulting iterator will
-/// return exactly one `Err` element, otherwise an iterator of film, rolls is returned.
+/// return exactly one `Err` element, otherwise an iterator of film rolls is returned.
 pub fn from_filmrolls<R>(reader: R) -> impl Iterator<Item = Result<Roll, SourceError>>
 where
     R: std::io::BufRead,
@@ -239,6 +314,23 @@ where
     use itertools::Either::{Left, Right};
     match quick_xml::de::from_reader::<R, filmrolls::Data>(reader) {
         Ok(data) => Left(data.film_rolls.film_roll.into_iter().map(TryInto::try_into)),
+        Err(error) => Right(std::iter::once(Err(error.into()))),
+    }
+}
+
+/// Read lightme iOS app JSON data
+///
+/// Attempts to read film roll data from the lightme iOS app using the provided
+/// [serde_json](https://docs.rs/serde_json/latest/serde_json/) reader. If a parsing
+/// error occurs, or any data is missing or invalid, the resulting iterator will
+/// return exactly one `Err` element, otherwise an iterator of film rolls is returned.
+pub fn from_lightme<R>(reader: R) -> impl Iterator<Item = Result<Roll, SourceError>>
+where
+    R: std::io::BufRead,
+{
+    use itertools::Either::{Left, Right};
+    match serde_json::de::from_reader::<R, lightme::Data>(reader) {
+        Ok(data) => Left(std::iter::once(data.try_into())),
         Err(error) => Right(std::iter::once(Err(error.into()))),
     }
 }
@@ -480,6 +572,192 @@ mod tests {
                 camera: None,
                 ..base_roll.clone()
             }),
+            Ok(Roll {
+                camera: None,
+                ..expected.clone()
+            })
+        );
+    }
+
+    #[test]
+    fn convert_lightme_frame() {
+        let base_frame = lightme::Frame {
+            date_time_original: chrono::Utc
+                .with_ymd_and_hms(2022, 4, 30, 18, 29, 15)
+                .unwrap()
+                .into(),
+            description: Some("Ilford SFX 200 (135)".into()),
+            document_name: Some("Ilford SFX 200".into()),
+            exposure_time: Some(num_rational::Rational32::new(1, 125).into()),
+            f_number: Some(rust_decimal::Decimal::new(8, 0).into()),
+            focal_length: 35,
+            gps_latitude: 57.700833333333335,
+            gps_longitude: 11.974166666666667,
+            image_number: 1,
+            iso_speed: 200,
+            lens_make: Some("Voigtländer".into()),
+            lens_model: Some("35mm f/2,5 Color Skopar Pancake II (35mm)".into()),
+            make: Some("Voigtländer".into()),
+            model: Some("Bessa R2M (Voigtländer)".into()),
+            reel_name: Some("A0020".into()),
+            user_comment: Some(lightme::Notes {
+                load_date: chrono::Utc
+                    .with_ymd_and_hms(2022, 4, 30, 17, 57, 00)
+                    .unwrap()
+                    .into(),
+                unload_date: chrono::Utc
+                    .with_ymd_and_hms(2022, 5, 1, 15, 12, 00)
+                    .unwrap()
+                    .into(),
+            }),
+        };
+        let expected = Frame {
+            lens: Some(Lens {
+                make: "Voigtländer".into(),
+                model: "35mm f/2,5 Color Skopar Pancake II".into(),
+            }),
+            aperture: base_frame.f_number.map(Aperture::from),
+            shutter_speed: base_frame.exposure_time.map(ShutterSpeed::from),
+            compensation: None,
+            datetime: base_frame.date_time_original.clone().into(),
+            position: Position {
+                lat: base_frame.gps_latitude,
+                lon: base_frame.gps_longitude,
+            },
+            note: None,
+        };
+
+        assert_eq!(Frame::try_from(base_frame.clone()), Ok(expected.clone()));
+        assert_eq!(
+            Frame::try_from(lightme::Frame {
+                lens_make: None,
+                ..base_frame.clone()
+            }),
+            Ok(Frame {
+                lens: Some(Lens {
+                    make: Default::default(),
+                    model: "35mm f/2,5 Color Skopar Pancake II".into()
+                }),
+                ..expected.clone()
+            })
+        );
+        assert_eq!(
+            Frame::try_from(lightme::Frame {
+                lens_model: None,
+                ..base_frame.clone()
+            }),
+            Ok(Frame {
+                lens: None,
+                ..expected.clone()
+            })
+        );
+    }
+
+    #[test]
+    fn convert_lightme_roll() {
+        let base_frame = lightme::Frame {
+            date_time_original: chrono::Utc
+                .with_ymd_and_hms(2022, 4, 30, 18, 29, 15)
+                .unwrap()
+                .into(),
+            description: Some("Ilford SFX 200 (135)".into()),
+            document_name: Some("Ilford SFX 200".into()),
+            exposure_time: Some(num_rational::Rational32::new(1, 125).into()),
+            f_number: Some(rust_decimal::Decimal::new(8, 0).into()),
+            focal_length: 35,
+            gps_latitude: 57.700833333333335,
+            gps_longitude: 11.974166666666667,
+            image_number: 1,
+            iso_speed: 200,
+            lens_make: Some("Voigtländer".into()),
+            lens_model: Some("35mm f/2,5 Color Skopar Pancake II (35mm)".into()),
+            make: Some("Voigtländer".into()),
+            model: Some("Bessa R2M (Voigtländer)".into()),
+            reel_name: Some("A0020".into()),
+            user_comment: Some(lightme::Notes {
+                load_date: chrono::Utc
+                    .with_ymd_and_hms(2022, 4, 30, 17, 57, 00)
+                    .unwrap()
+                    .into(),
+                unload_date: chrono::Utc
+                    .with_ymd_and_hms(2022, 5, 1, 15, 12, 00)
+                    .unwrap()
+                    .into(),
+            }),
+        };
+        let expected = Roll {
+            id: base_frame.reel_name.clone().unwrap().into(),
+            film: Some(Film("Ilford SFX 200".into())),
+            speed: FilmSpeed::from_din(24), // ISO 200/24°
+            camera: Some(Camera {
+                make: "Voigtländer".into(),
+                model: "Bessa R2M".into(),
+            }),
+            load: base_frame.user_comment.clone().unwrap().load_date.into(),
+            unload: base_frame.user_comment.clone().unwrap().unload_date.into(),
+            frames: vec![Some(Frame {
+                lens: Some(Lens {
+                    make: "Voigtländer".into(),
+                    model: "35mm f/2,5 Color Skopar Pancake II".into(),
+                }),
+                aperture: base_frame.f_number.map(Aperture::from),
+                shutter_speed: base_frame.exposure_time.map(ShutterSpeed::from),
+                compensation: None,
+                datetime: base_frame.date_time_original.clone().into(),
+                position: Position {
+                    lat: base_frame.gps_latitude,
+                    lon: base_frame.gps_longitude,
+                },
+                note: None,
+            })],
+        };
+
+        assert_eq!(
+            Roll::try_from(vec![base_frame.clone()]),
+            Ok(expected.clone())
+        );
+        assert_eq!(
+            Roll::try_from(vec![lightme::Frame {
+                reel_name: None,
+                ..base_frame.clone()
+            }]),
+            Err(SourceError::MissingData("..."))
+        );
+        assert_eq!(
+            Roll::try_from(vec![lightme::Frame {
+                iso_speed: 0,
+                ..base_frame.clone()
+            }]),
+            Err(SourceError::InvalidData("..."))
+        );
+        assert_eq!(
+            Roll::try_from(vec![lightme::Frame {
+                document_name: None,
+                ..base_frame.clone()
+            }]),
+            Ok(Roll {
+                film: None,
+                ..expected.clone()
+            })
+        );
+        assert_eq!(
+            Roll::try_from(vec![lightme::Frame {
+                make: None,
+                ..base_frame.clone()
+            }]),
+            Ok(Roll {
+                camera: Some(Camera {
+                    make: Default::default(),
+                    model: "Bessa R2M".into()
+                }),
+                ..expected.clone()
+            })
+        );
+        assert_eq!(
+            Roll::try_from(vec![lightme::Frame {
+                model: None,
+                ..base_frame.clone()
+            }]),
             Ok(Roll {
                 camera: None,
                 ..expected.clone()
