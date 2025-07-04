@@ -22,14 +22,14 @@ pub(super) struct Frame<'a> {
     #[serde_as(as = "Option<f64>")]
     pub f_number: Option<Aperture>,
     pub focal_length: Option<f64>,
-    #[serde(alias = "FocalLengthIn35mmFormat")]
+    #[serde(rename = "FocalLengthIn35mmFormat")]
     pub focal_length_equiv: Option<f64>,
-    #[serde(alias = "GPSLatitude", deserialize_with = "deserialize_gps_coord")]
+    #[serde(rename = "GPSLatitude", deserialize_with = "deserialize_gps_coord")]
     pub gps_latitude: f64,
-    #[serde(alias = "GPSLongitude", deserialize_with = "deserialize_gps_coord")]
+    #[serde(rename = "GPSLongitude", deserialize_with = "deserialize_gps_coord")]
     pub gps_longitude: f64,
     pub image_number: usize,
-    #[serde(alias = "ISOSpeed")]
+    #[serde(rename = "ISOSpeed")]
     pub iso_speed: u32,
     pub lens_make: Option<Text<'a>>,
     pub lens_model: Option<Text<'a>>,
