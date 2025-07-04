@@ -3,7 +3,7 @@
 ## Successfully listing all rolls from XML and JSON
 
 ```console
-$ filmrolls list-rolls tests/data/filmrolls.xml tests/data/lightme.json
+$ filmrolls list-rolls -r tests/data/filmrolls.xml -r tests/data/lightme.json
 ? success
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ID      Frames   Film                         Camera                  Loaded                       Unloaded
@@ -13,7 +13,7 @@ $ filmrolls list-rolls tests/data/filmrolls.xml tests/data/lightme.json
  A0020   1        Ilford SFX 200 @ 200/24°     Voigtländer Bessa R2M   2022-04-30 17:57:00 +00:00   2022-05-01 15:12:00 +00:00
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-$ filmrolls list-rolls tests/data/lightme.json tests/data/filmrolls.xml
+$ filmrolls list-rolls -r tests/data/lightme.json -r tests/data/filmrolls.xml
 ? success
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ID      Frames   Film                         Camera                  Loaded                       Unloaded
@@ -28,11 +28,11 @@ $ filmrolls list-rolls tests/data/lightme.json tests/data/filmrolls.xml
 ## Trying to use a non-existent file
 
 ```console
-$ filmrolls list-rolls --color=never /path/which/does/not/exist.xml
+$ filmrolls list-rolls --color=never -r /path/which/does/not/exist.xml
 ? failed
-error: Invalid value for [FILES]...: Could not open "/path/which/does/not/exist.xml": No such file or directory (os error 2)
+error: Invalid value for --rolls <FILE>: Could not open "/path/which/does/not/exist.xml": No such file or directory (os error 2)
 
-Usage: filmrolls list-rolls [OPTIONS] <FILES>
+Usage: filmrolls list-rolls [OPTIONS] <--rolls <FILE>>
 
 For more information, try '--help'.
 
@@ -41,7 +41,7 @@ For more information, try '--help'.
 ## Trying to use a garbage file
 
 ```console
-$ filmrolls list-rolls --color=never /dev/null
+$ filmrolls list-rolls --color=never -r /dev/null
 ? failed
 Error: 
    0: Failed to read roll data from /dev/null

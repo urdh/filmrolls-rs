@@ -79,14 +79,14 @@ struct GlobalOpts {
 #[group(required = true, multiple = false)]
 struct FilmRoll {
     /// Input film roll data file(s)
-    #[clap(value_parser)]
-    files: Vec<clio::Input>,
+    #[clap(long, short = 'r', value_parser, value_name = "FILE")]
+    rolls: Vec<clio::Input>,
 }
 
 impl FilmRoll {
     /// Read & parse the given film roll data file
     fn into_rolls(self) -> impl Iterator<Item = Result<rolls::Roll>> {
-        self.files
+        self.rolls
             .into_iter()
             .map(|input| {
                 let path = input.path().path();

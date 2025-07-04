@@ -21,7 +21,7 @@ At the moment, the utility only supports reading and displaying Film Rolls XML d
 the film rolls present:
 
 ```console
-$ filmrolls list-rolls tests/data/filmrolls.xml tests/data/lightme.json
+$ filmrolls list-rolls -r tests/data/filmrolls.xml -r tests/data/lightme.json
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ID      Frames   Film                         Camera                  Loaded                       Unloaded
 ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -30,7 +30,7 @@ $ filmrolls list-rolls tests/data/filmrolls.xml tests/data/lightme.json
  A0020   1        Ilford SFX 200 @ 200/24°     Voigtländer Bessa R2M   2022-04-30 17:57:00 +00:00   2022-05-01 15:12:00 +00:00
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-$ filmrolls list-frames tests/data/filmrolls.xml -i A0012
+$ filmrolls list-frames -r tests/data/filmrolls.xml -i A0012
 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  #   Lens                             Focal len.   Aperture   Shutter   Comp.   Date                         Location                              Notes
 ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
