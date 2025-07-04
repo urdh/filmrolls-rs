@@ -6,6 +6,7 @@ use color_eyre::eyre::Result;
 
 mod clap;
 mod cmds;
+mod metadata;
 mod negative;
 mod rolls;
 mod types;

@@ -1,6 +1,7 @@
 //! Trait for applying various metadata to a single image
 use std::path::{Path, PathBuf};
 
+use crate::metadata::Metadata;
 use crate::rolls::{Frame, Roll};
 
 mod exif;
@@ -99,6 +100,13 @@ impl ApplyMetadata<Roll> for Negative {
 
 impl ApplyMetadata<Frame> for Negative {
     fn apply_metadata(&mut self, data: &Frame) -> Result<(), NegativeError> {
+        self.exif.apply_metadata(data)?;
+        Ok(())
+    }
+}
+
+impl ApplyMetadata<Metadata> for Negative {
+    fn apply_metadata(&mut self, data: &Metadata) -> Result<(), NegativeError> {
         self.exif.apply_metadata(data)?;
         Ok(())
     }

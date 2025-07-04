@@ -44,6 +44,13 @@ $ filmrolls tag -n -r tests/data/filmrolls.xml -i A0012 tests/data/20160513-A001
  A0012   2016-05-13 14:12:40 UTC   tests/data/20160513-A0012+001.tiff
 ──────────────────────────────────────────────────────────────────────
 
+$ filmrolls apply-metadata -n -m tests/data/metadata.toml tests/data/20160513-A0012+001.tiff
+──────────────────────────────────────────────────
+ Roll   Date   Path
+══════════════════════════════════════════════════
+               tests/data/20160513-A0012+001.tiff
+──────────────────────────────────────────────────
+
 ```
 
 [film-rolls]: https://itunes.apple.com/se/app/film-rolls-app-for-film-photographers/id675626559
