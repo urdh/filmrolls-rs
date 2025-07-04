@@ -342,7 +342,12 @@ where
 {
     use itertools::Either::{Left, Right};
     match serde_json::de::from_reader::<R, lightme::Data>(reader) {
-        Ok(data) => Left(std::iter::once(data.try_into())),
+        Ok(data) => Left(
+            data.into_iter()
+                .into_group_map_by(|r| r.reel_name.to_owned())
+                .into_values()
+                .map(TryInto::try_into),
+        ),
         Err(error) => Right(std::iter::once(Err(error.into()))),
     }
 }
