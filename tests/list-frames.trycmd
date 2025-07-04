@@ -3,7 +3,7 @@
 ## Successfully listing frames in a roll from XML
 
 ```console
-$ filmrolls list-frames tests/data/filmrolls.xml -i A0012
+$ filmrolls list-frames -r tests/data/filmrolls.xml -i A0012
 ? success
 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  #   Lens                             Focal len.   Aperture   Shutter   Comp.   Date                         Location                              Notes
@@ -16,7 +16,7 @@ $ filmrolls list-frames tests/data/filmrolls.xml -i A0012
 ## Successfully listing frames in a roll from JSON
 
 ```console
-$ filmrolls list-frames tests/data/lightme.json -i A0020
+$ filmrolls list-frames -r tests/data/lightme.json -i A0020
 ? success
 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  #   Lens                                             Focal len.   Aperture   Shutter   Comp.   Date                         Location                              Notes
@@ -29,7 +29,7 @@ $ filmrolls list-frames tests/data/lightme.json -i A0020
 ## Trying to list frames from a non-existent roll
 
 ```console
-$ filmrolls list-frames tests/data/filmrolls.xml -i does-not-exist
+$ filmrolls list-frames -r tests/data/filmrolls.xml -i does-not-exist
 ? failed
 Could not find film roll with ID `does-not-exist`
 
@@ -38,12 +38,12 @@ Could not find film roll with ID `does-not-exist`
 ## Trying to omit the `id` command-line argument
 
 ```console
-$ filmrolls list-frames tests/data/filmrolls.xml
+$ filmrolls list-frames -r tests/data/filmrolls.xml
 ? failed
 error: the following required arguments were not provided:
   --id <ID>
 
-Usage: filmrolls list-frames --id <ID> <FILES>
+Usage: filmrolls list-frames --id <ID> <--rolls <FILE>>
 
 For more information, try '--help'.
 
@@ -52,11 +52,11 @@ For more information, try '--help'.
 ## Trying to use a non-existent file
 
 ```console
-$ filmrolls list-frames --color=never /path/which/does/not/exist.xml -i A0012
+$ filmrolls list-frames --color=never -r /path/which/does/not/exist.xml -i A0012
 ? failed
-error: Invalid value for [FILES]...: Could not open "/path/which/does/not/exist.xml": No such file or directory (os error 2)
+error: Invalid value for --rolls <FILE>: Could not open "/path/which/does/not/exist.xml": No such file or directory (os error 2)
 
-Usage: filmrolls list-frames [OPTIONS] --id <ID> <FILES>
+Usage: filmrolls list-frames [OPTIONS] --id <ID> <--rolls <FILE>>
 
 For more information, try '--help'.
 
@@ -65,7 +65,7 @@ For more information, try '--help'.
 ## Trying to use a garbage file
 
 ```console
-$ filmrolls list-frames --color=never /dev/null -i A0012
+$ filmrolls list-frames --color=never -r /dev/null -i A0012
 ? failed
 Error: 
    0: Failed to read roll data from /dev/null
