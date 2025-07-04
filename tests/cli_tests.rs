@@ -17,3 +17,8 @@ fn test_cli_list_frames() {
 fn test_cli_tag() {
     trycmd::TestCases::new().case("tests/tag.trycmd");
 }
+
+#[test]
+fn test_cli_apply_metadata() {
+    trycmd::TestCases::new().case("tests/apply-metadata.trycmd");
+}

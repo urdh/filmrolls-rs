@@ -3,6 +3,7 @@ use little_exif::exif_tag::ExifTag;
 use little_exif::ifd::ExifTagGroup;
 use little_exif::rational::{iR64, uR64};
 
+use crate::metadata::Metadata;
 use crate::rolls::{Frame, Roll};
 use crate::types::*;
 
@@ -136,6 +137,33 @@ impl super::ApplyMetadata<Frame> for little_exif::metadata::Metadata {
     }
 }
 
+impl super::ApplyMetadata<Metadata> for little_exif::metadata::Metadata {
+    fn apply_metadata(&mut self, data: &Metadata) -> Result<(), super::NegativeError> {
+        // Figure out what year this negative was shot, for the copyright
+        let date = None
+            .or_else(|| {
+                self.get_tag(&ExifTag::DateTimeOriginal(String::new()))
+                    .next()
+            })
+            .or_else(|| self.get_tag(&ExifTag::CreateDate(String::new())).next())
+            .and_then(|tag| match tag {
+                ExifTag::DateTimeOriginal(s) | ExifTag::CreateDate(s) => {
+                    chrono::NaiveDateTime::parse_from_str(&s, "%Y:%m:%d %H:%M:%S").ok()
+                }
+                _ => None,
+            })
+            .map(|d| d.and_utc())
+            .unwrap_or_else(|| chrono::Utc::now());
+
+        // Set the Artist & Copyright EXIF tags
+        self.set_tag(ExifTag::Artist(data.author.name.to_owned()));
+        self.set_tag(ExifTag::Copyright(data.copyright(date)));
+
+        // Success!
+        Ok(())
+    }
+}
+
 /// Helper function for setting the GPS latitude EXIF tags
 fn set_latitude(exif: &mut little_exif::metadata::Metadata, latitude: f64) {
     use dms_coordinates::{Cardinal, DMS};
@@ -261,6 +289,7 @@ fn to_exif_undef(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::metadata::*;
     use crate::negative::ApplyMetadata;
     use crate::rolls::*;
     use num_rational::Ratio;
@@ -400,6 +429,9 @@ mod tests {
     #[test]
     fn apply_frame_data() {
         let mut exif = little_exif::metadata::Metadata::new();
+        let datetime = chrono::NaiveDate::from_ymd_opt(2025, 6, 1)
+            .and_then(|date| date.and_hms_opt(12, 15, 00))
+            .map(|date| date.and_utc());
         let frame = Frame {
             lens: Some(Lens {
                 make: "Voigtländer".into(),
@@ -412,12 +444,7 @@ mod tests {
                 equiv: Some(dec!(35)),
             }),
             compensation: Some(ExposureBias(Ratio::new(-1, 3))),
-            datetime: chrono::NaiveDate::from_ymd_opt(2025, 6, 1)
-                .unwrap()
-                .and_hms_opt(12, 15, 00)
-                .unwrap()
-                .and_utc()
-                .into(),
+            datetime: datetime.unwrap().into(),
             position: Position { lat: 0.0, lon: 0.0 },
             note: None,
         };
@@ -525,6 +552,33 @@ mod tests {
             exif.get_tag(&ExifTag::GPSLongitudeRef(String::new()))
                 .next(),
             Some(ExifTag::GPSLongitudeRef("E".into())).as_ref()
+        );
+    }
+
+    #[test]
+    fn apply_author_data() {
+        let mut exif = little_exif::metadata::Metadata::new();
+        let datetime = chrono::NaiveDate::from_ymd_opt(2025, 6, 1)
+            .and_then(|date| date.and_hms_opt(12, 15, 00))
+            .map(|date| date.and_utc());
+        let metadata = Metadata {
+            author: Author {
+                name: "Simon Sigurdhsson".into(),
+                url: None,
+            },
+            license: None,
+        };
+        exif.set_tag(ExifTag::DateTimeOriginal("2025:06:01 12:15:00".into()));
+        exif.apply_metadata(&metadata)
+            .expect("author/license data should be applicable as EXIF");
+
+        assert_eq!(
+            exif.get_tag(&ExifTag::Artist(String::new())).next(),
+            Some(ExifTag::Artist(metadata.author.name.clone())).as_ref()
+        );
+        assert_eq!(
+            exif.get_tag(&ExifTag::Copyright(String::new())).next(),
+            Some(ExifTag::Copyright(metadata.copyright(datetime.unwrap()))).as_ref()
         );
     }
 }

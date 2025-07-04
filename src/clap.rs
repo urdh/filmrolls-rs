@@ -1,13 +1,14 @@
 //! Command-line interface definition
-use std::io::BufReader;
+use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use ::clap::{Args, Parser, Subcommand};
 use color_eyre::eyre::{Result, WrapErr};
+use itertools::Itertools;
 
 use crate::negative::ApplyMetadata;
-use crate::{cmds, negative, rolls};
+use crate::{cmds, metadata, negative, rolls};
 
 #[doc(hidden)]
 mod shadow {
@@ -114,6 +115,33 @@ impl FilmRoll {
 }
 
 #[derive(Args)]
+#[group(required = true, multiple = false)]
+struct Metadata {
+    /// Author metadata
+    #[clap(long, short = 'm', value_parser, value_name = "FILE")]
+    meta: clio::Input,
+}
+
+impl Metadata {
+    /// Read & parse the given author metadata file
+    fn into_meta(mut self) -> Result<metadata::Metadata> {
+        let mut buf = String::new();
+        self.meta.read_to_string(&mut buf).wrap_err_with(|| {
+            format!(
+                "Failed to read author metadata from {}",
+                self.meta.path().display()
+            )
+        })?;
+        toml::de::from_str(&buf).wrap_err_with(|| {
+            format!(
+                "Failed to parse author metadata from {}",
+                self.meta.path().display()
+            )
+        })
+    }
+}
+
+#[derive(Args)]
 #[group(required = false, multiple = false)]
 struct Images {
     /// Image file(s) to modify
@@ -156,6 +184,19 @@ enum Commands {
         /// Use data from roll with id ID
         #[clap(long, short)]
         id: String,
+
+        /// Don't actually modify any files
+        #[clap(long, short = 'n')]
+        dry_run: bool,
+
+        #[clap(flatten)]
+        images: Images,
+    },
+
+    /// Write author metadata to a set of images using YAML data from file
+    ApplyMetadata {
+        #[clap(flatten)]
+        metadata: Metadata,
 
         /// Don't actually modify any files
         #[clap(long, short = 'n')]
@@ -213,6 +254,28 @@ impl Commands {
                     println!("Could not find film roll with ID `{id}`");
                     Ok(ExitCode::FAILURE)
                 }
+            }
+            Self::ApplyMetadata {
+                metadata,
+                dry_run,
+                images,
+            } => {
+                // Load negatives, apply metadata, and optionally save to file
+                let metadata = metadata.into_meta()?;
+                let negatives = images.into_negatives().map(|negative| {
+                    negative.and_then(|mut negative| {
+                        negative.apply_metadata(&metadata)?;
+                        if !dry_run {
+                            negative.save()?;
+                        }
+                        Ok(negative)
+                    })
+                });
+
+                // Print a brief summary of the images being modified
+                let table = cmds::list_negatives(negatives)?;
+                println!("{}", Self::format_table(table).trim_fmt());
+                Ok(ExitCode::SUCCESS)
             }
         }
     }
