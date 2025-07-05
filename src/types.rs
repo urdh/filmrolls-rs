@@ -9,7 +9,7 @@ use serde::{Deserialize, Deserializer};
 use serde_with::{DeserializeAs, DeserializeFromStr};
 
 /// A geographical position
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, Default, PartialEq, PartialOrd, Debug)]
 pub struct Position {
     pub lat: f64,
     pub lon: f64,
@@ -111,7 +111,7 @@ impl std::fmt::Display for ShutterSpeed {
 /// `Ratio` type from the *num-rational* crate.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(DeserializeFromStr)]
-pub struct ExposureBias(num_rational::Rational32);
+pub struct ExposureBias(pub num_rational::Rational32);
 
 impl std::str::FromStr for ExposureBias {
     type Err = num_rational::ParseRatioError;
@@ -282,6 +282,25 @@ impl std::fmt::Display for FilmSpeed {
     }
 }
 
+/// Helper trait converting Decimal to Rational
+pub(crate) trait AsRational<T> {
+    fn as_rational(&self) -> num_rational::Ratio<T>;
+}
+
+impl AsRational<i32> for rust_decimal::Decimal {
+    fn as_rational(&self) -> num_rational::Ratio<i32> {
+        let v = self.normalize();
+        num_rational::Ratio::new(v.mantissa() as i32, 10i32.pow(v.scale()))
+    }
+}
+
+impl AsRational<i64> for rust_decimal::Decimal {
+    fn as_rational(&self) -> num_rational::Ratio<i64> {
+        let v = self.normalize();
+        num_rational::Ratio::new(v.mantissa() as i64, 10i64.pow(v.scale()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -397,5 +416,15 @@ mod tests {
         assert_eq!("S".parse(), Ok(Aperture::ShutterPriority));
         assert_eq!("Tv".parse(), Ok(Aperture::ShutterPriority));
         assert_eq!("5.6".parse(), Ok(Aperture::Manual(dec!(5.6))));
+    }
+
+    #[test]
+    fn rational_from_decimal() {
+        assert_eq!(dec!(1230.0).as_rational(), Ratio::<i32>::new(1230, 1));
+        assert_eq!(dec!(12.30).as_rational(), Ratio::<i32>::new(123, 10));
+        assert_eq!(dec!(0.1230).as_rational(), Ratio::<i32>::new(123, 1000));
+        assert_eq!(dec!(1230.0).as_rational(), Ratio::<i64>::new(1230, 1));
+        assert_eq!(dec!(12.30).as_rational(), Ratio::<i64>::new(123, 10));
+        assert_eq!(dec!(0.1230).as_rational(), Ratio::<i64>::new(123, 1000));
     }
 }

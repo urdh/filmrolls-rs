@@ -1,0 +1,61 @@
+# Test cases for `tag`
+
+## Successfully (dry-run) tagging a TIFF
+
+```console
+$ filmrolls tag -n -r tests/data/filmrolls.xml -i A0012 tests/data/20160513-A0012+001.tiff
+? success
+──────────────────────────────────────────────────────────────────────
+ Roll    Date                      Path
+══════════════════════════════════════════════════════════════════════
+ A0012   2016-05-13 14:12:40 UTC   tests/data/20160513-A0012+001.tiff
+──────────────────────────────────────────────────────────────────────
+
+```
+
+## Trying to use too many or too few image files
+
+```console
+$ filmrolls tag -n --color=never -r tests/data/filmrolls.xml -i A0012
+? failed
+Error: 
+   0: Frame count does not match image count
+
+Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
+Run with RUST_BACKTRACE=full to include source snippets.
+
+$ filmrolls tag -n --color=never -r tests/data/filmrolls.xml -i A0012 tests/data/20160513-A0012+001.tiff tests/data/20160513-A0012+001.tiff
+? failed
+Error: 
+   0: Frame count does not match image count
+
+Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
+Run with RUST_BACKTRACE=full to include source snippets.
+
+```
+
+## Trying to use a non-existent image file
+
+```console
+$ filmrolls tag -n --color=never -r tests/data/filmrolls.xml -i A0012 /path/which/does/not/exist.tiff
+? failed
+Error: 
+   0: File does not exist!
+
+Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
+Run with RUST_BACKTRACE=full to include source snippets.
+
+```
+
+## Trying to use a garbage image file
+
+```console
+$ filmrolls tag -n --color=never -r tests/data/filmrolls.xml -i A0012 /dev/null
+? failed
+Error: 
+   0: Can't get file extension!
+
+Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
+Run with RUST_BACKTRACE=full to include source snippets.
+
+```

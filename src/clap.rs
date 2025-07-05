@@ -1,11 +1,13 @@
 //! Command-line interface definition
 use std::io::BufReader;
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use ::clap::{Args, Parser, Subcommand};
 use color_eyre::eyre::{Result, WrapErr};
 
-use crate::{cmds, rolls};
+use crate::negative::ApplyMetadata;
+use crate::{cmds, negative, rolls};
 
 #[doc(hidden)]
 mod shadow {
@@ -111,6 +113,23 @@ impl FilmRoll {
     }
 }
 
+#[derive(Args)]
+#[group(required = false, multiple = false)]
+struct Images {
+    /// Image file(s) to modify
+    #[clap(value_parser)]
+    images: Vec<PathBuf>,
+}
+
+impl Images {
+    /// Read metadata from all input images
+    fn into_negatives(self) -> impl Iterator<Item = Result<negative::Negative>> {
+        self.images
+            .into_iter()
+            .map(|p| negative::Negative::new_from_path(p.as_ref()).map_err(Into::into))
+    }
+}
+
 #[derive(Subcommand)]
 enum Commands {
     /// List ID and additional data for all film rolls in input
@@ -128,6 +147,23 @@ enum Commands {
         #[clap(long, short)]
         id: String,
     },
+
+    /// Write EXIF tags to a set of images using data from film roll with ID in input
+    Tag {
+        #[clap(flatten)]
+        film_roll: FilmRoll,
+
+        /// Use data from roll with id ID
+        #[clap(long, short)]
+        id: String,
+
+        /// Don't actually modify any files
+        #[clap(long, short = 'n')]
+        dry_run: bool,
+
+        #[clap(flatten)]
+        images: Images,
+    },
 }
 
 impl Commands {
@@ -140,7 +176,37 @@ impl Commands {
                 Ok(ExitCode::SUCCESS)
             }
             Self::ListFrames { film_roll, id } => {
-                if let Some(table) = cmds::list_frames(film_roll.into_rolls(), &id)? {
+                if let Some(roll) = cmds::find_roll(film_roll.into_rolls(), &id)? {
+                    let table = cmds::list_frames(roll);
+                    println!("{}", Self::format_table(table).trim_fmt());
+                    Ok(ExitCode::SUCCESS)
+                } else {
+                    println!("Could not find film roll with ID `{id}`");
+                    Ok(ExitCode::FAILURE)
+                }
+            }
+            Self::Tag {
+                film_roll,
+                id,
+                dry_run,
+                images,
+            } => {
+                if let Some(roll) = cmds::find_roll(film_roll.into_rolls(), &id)? {
+                    // Match frames & images, apply metadata, and optionally save to file
+                    let negatives =
+                        cmds::match_negatives(roll.frames.iter(), images.into_negatives())?
+                            .into_iter()
+                            .map(|(frame, mut negative)| {
+                                negative.apply_metadata(&roll)?;
+                                negative.apply_metadata(frame)?;
+                                if !dry_run {
+                                    negative.save()?;
+                                }
+                                Ok(negative)
+                            });
+
+                    // Print a brief summary of the images being modified
+                    let table = cmds::list_negatives(negatives)?;
                     println!("{}", Self::format_table(table).trim_fmt());
                     Ok(ExitCode::SUCCESS)
                 } else {
