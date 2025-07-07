@@ -89,28 +89,23 @@ struct FilmRoll {
 impl FilmRoll {
     /// Read & parse the given film roll data file
     fn into_rolls(self) -> impl Iterator<Item = Result<rolls::Roll>> {
-        self.rolls
-            .into_iter()
-            .map(|input| {
-                let path = input.path().path();
-                let reader = BufReader::new(input.clone());
-                use rolls::SourceError::UnsupportedFormat;
-                match mime_guess::from_path(path)
-                    .first_or_octet_stream()
-                    .essence_str()
-                {
-                    "text/xml" => RollIter::XmlSource(rolls::from_filmrolls(reader)),
-                    "application/json" => RollIter::JsonSource(rolls::from_lightme(reader)),
-                    mime => RollIter::from_error(UnsupportedFormat(mime.to_owned())),
-                }
-                .map(move |result| -> Result<rolls::Roll> {
-                    result.wrap_err_with(|| {
-                        format!("Failed to read roll data from {}", path.display())
-                    })
-                })
-                .collect::<Vec<_>>()
+        self.rolls.into_iter().flat_map(|input| {
+            let path = input.path().path();
+            let reader = BufReader::new(input.clone());
+            use rolls::SourceError::UnsupportedFormat;
+            match mime_guess::from_path(path)
+                .first_or_octet_stream()
+                .essence_str()
+            {
+                "text/xml" => RollIter::XmlSource(rolls::from_filmrolls(reader)),
+                "application/json" => RollIter::JsonSource(rolls::from_lightme(reader)),
+                mime => RollIter::from_error(UnsupportedFormat(mime.to_owned())),
+            }
+            .map(move |result| -> Result<rolls::Roll> {
+                result.wrap_err_with(|| format!("Failed to read roll data from {}", path.display()))
             })
-            .flatten()
+            .collect::<Vec<_>>()
+        })
     }
 }
 

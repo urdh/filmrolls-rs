@@ -148,12 +148,12 @@ impl super::ApplyMetadata<Metadata> for little_exif::metadata::Metadata {
             .or_else(|| self.get_tag(&ExifTag::CreateDate(String::new())).next())
             .and_then(|tag| match tag {
                 ExifTag::DateTimeOriginal(s) | ExifTag::CreateDate(s) => {
-                    chrono::NaiveDateTime::parse_from_str(&s, "%Y:%m:%d %H:%M:%S").ok()
+                    chrono::NaiveDateTime::parse_from_str(s, "%Y:%m:%d %H:%M:%S").ok()
                 }
                 _ => None,
             })
             .map(|d| d.and_utc())
-            .unwrap_or_else(|| chrono::Utc::now());
+            .unwrap_or_else(chrono::Utc::now);
 
         // Set the Artist & Copyright EXIF tags
         self.set_tag(ExifTag::Artist(data.author.name.to_owned()));
@@ -265,15 +265,15 @@ fn to_exif_undef(
     // Try storing UCS-2 only if necessary
     if !value.is_ascii() {
         let mut buffer = vec![0xFEFFu16; value.len() + 1];
-        if let Ok(len) = ucs2::encode(&value, &mut buffer[1..]) {
+        if let Ok(len) = ucs2::encode(value, &mut buffer[1..]) {
             buffer.truncate(len + 1);
             bytes.extend([0x55, 0x4E, 0x49, 0x43, 0x4F, 0x44, 0x45, 0x00]);
             match endian {
                 little_exif::endian::Endian::Big => {
-                    bytes.extend(buffer.into_iter().map(u16::to_be_bytes).flatten())
+                    bytes.extend(buffer.into_iter().flat_map(u16::to_be_bytes))
                 }
                 little_exif::endian::Endian::Little => {
-                    bytes.extend(buffer.into_iter().map(u16::to_le_bytes).flatten())
+                    bytes.extend(buffer.into_iter().flat_map(u16::to_le_bytes))
                 }
             };
             return bytes;
@@ -283,7 +283,7 @@ fn to_exif_undef(
     // Otherwise, just store (sanitized) ASCII
     bytes.extend([0x41, 0x53, 0x43, 0x49, 0x49, 0x00, 0x00, 0x00]);
     bytes.extend(value.chars().filter(char::is_ascii).map(|c| c as u8));
-    return bytes;
+    bytes
 }
 
 #[cfg(test)]

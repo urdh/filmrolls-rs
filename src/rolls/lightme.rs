@@ -47,7 +47,7 @@ pub(super) struct Notes {
     pub unload_date: CustomDateTime,
 }
 
-impl<'a> std::str::FromStr for Notes {
+impl std::str::FromStr for Notes {
     type Err = chrono::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -93,13 +93,13 @@ impl std::str::FromStr for CustomDateTime {
     type Err = chrono::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        chrono::DateTime::<FixedOffset>::parse_from_rfc3339(&s)
+        chrono::DateTime::<FixedOffset>::parse_from_rfc3339(s)
             .or_else(|_| {
-                chrono::NaiveDateTime::parse_from_str(&s, "%Y:%m:%d %H:%M:%S")
+                chrono::NaiveDateTime::parse_from_str(s, "%Y:%m:%d %H:%M:%S")
                     .map(|date| date.and_utc().into())
             })
             .or_else(|_| {
-                chrono::NaiveDateTime::parse_from_str(&s, "%d %b %Y at %H:%M")
+                chrono::NaiveDateTime::parse_from_str(s, "%d %b %Y at %H:%M")
                     .map(|date| date.and_utc().into())
             })
             .map(Self)
