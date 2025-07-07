@@ -154,7 +154,7 @@ mod tests {
         };
         assert_eq!(no_license.license.as_ref().map(|l| l.url()), None);
         assert_eq!(
-            no_license.copyright(NaiveDate::from_yo(2025, 1)),
+            no_license.copyright(NaiveDate::from_yo_opt(2025, 1).unwrap()),
             "© Simon Sigurdhsson, 2025. All rights reserved."
         );
         assert_eq!(no_license.usage_terms(), None);
@@ -168,7 +168,7 @@ mod tests {
             Some("https://creativecommons.org/publicdomain/zero/1.0/")
         );
         assert_eq!(
-            public_domain.copyright(NaiveDate::from_yo(2025, 1)),
+            public_domain.copyright(NaiveDate::from_yo_opt(2025, 1).unwrap()),
             "© Simon Sigurdhsson, 2025. No rights reserved."
         );
         assert_eq!(
@@ -185,7 +185,7 @@ mod tests {
             Some("https://creativecommons.org/licenses/by-nc/4.0/")
         );
         assert_eq!(
-            cc_by_nc.copyright(NaiveDate::from_yo(2025, 1)),
+            cc_by_nc.copyright(NaiveDate::from_yo_opt(2025, 1).unwrap()),
             "© Simon Sigurdhsson, 2025. Some rights reserved."
         );
         assert_eq!(

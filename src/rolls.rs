@@ -391,27 +391,27 @@ mod tests {
         );
         assert_equal(
             super::expand_indexed(vec![(1, 'A'), (2, 'B')].into_iter()),
-            vec![Some('A'), Some('B')].into_iter(),
+            vec![Some('A'), Some('B')],
         );
         assert_equal(
             super::expand_indexed(vec![(1, 'A'), (2, 'B'), (5, 'C')].into_iter()),
-            vec![Some('A'), Some('B'), None, None, Some('C')].into_iter(),
+            vec![Some('A'), Some('B'), None, None, Some('C')],
         );
         assert_equal(
             super::expand_indexed(vec![(3, 'B')].into_iter()),
-            vec![None, None, Some('B')].into_iter(),
+            vec![None, None, Some('B')],
         );
         assert_equal(
             super::expand_indexed(vec![(3, 'A'), (3, 'B')].into_iter()),
-            vec![None, None, Some('A'), Some('B')].into_iter(),
+            vec![None, None, Some('A'), Some('B')],
         );
         assert_equal(
             super::expand_indexed(vec![(3, 'A'), (3, 'B'), (4, 'C')].into_iter()),
-            vec![None, None, Some('A'), Some('B'), Some('C')].into_iter(),
+            vec![None, None, Some('A'), Some('B'), Some('C')],
         );
         assert_equal(
             super::expand_indexed(vec![(0, 'A')].into_iter()),
-            vec![Some('A')].into_iter(),
+            vec![Some('A')],
         );
     }
 

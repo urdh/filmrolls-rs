@@ -37,7 +37,7 @@ impl Negative {
     /// Create a new negative based on the given image
     pub fn new_from_path(path: &Path) -> Result<Negative, NegativeError> {
         Ok(Self {
-            exif: little_exif::metadata::Metadata::new_from_path(&path)?,
+            exif: little_exif::metadata::Metadata::new_from_path(path)?,
             path: path.into(),
             roll: None,
         })
@@ -60,7 +60,7 @@ impl Negative {
 
     /// Get the roll ID of this negative, if any
     pub fn roll(&self) -> Option<&str> {
-        self.roll.as_ref().map(String::as_str)
+        self.roll.as_deref()
     }
 
     /// Get the original date/time of this negative, if any
@@ -71,7 +71,7 @@ impl Negative {
             .next()
             .and_then(|tag| match tag {
                 ExifTag::DateTimeOriginal(s) => {
-                    chrono::NaiveDateTime::parse_from_str(&s, "%Y:%m:%d %H:%M:%S").ok()
+                    chrono::NaiveDateTime::parse_from_str(s, "%Y:%m:%d %H:%M:%S").ok()
                 }
                 _ => None,
             })

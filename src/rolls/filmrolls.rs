@@ -169,13 +169,13 @@ impl std::str::FromStr for XmlDateTime {
     type Err = chrono::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        chrono::DateTime::<FixedOffset>::parse_from_rfc3339(&s)
+        chrono::DateTime::<FixedOffset>::parse_from_rfc3339(s)
             .or_else(|_| {
-                chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S%.f")
+                chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f")
                     .map(|date| date.and_utc().into())
             })
             .or_else(|_| {
-                chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d")
+                chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
                     .map(|date| date.and_time(chrono::NaiveTime::default()).and_utc().into())
             })
             .map(Self)

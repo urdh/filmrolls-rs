@@ -84,7 +84,7 @@ impl std::str::FromStr for ShutterSpeed {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Av" => Ok(Self::AperturePriority),
-            value => num_rational::Rational32::from_str(&value).map(Self::Manual),
+            value => num_rational::Rational32::from_str(value).map(Self::Manual),
         }
     }
 }
@@ -98,7 +98,7 @@ impl From<num_rational::Rational32> for ShutterSpeed {
 impl std::fmt::Display for ShutterSpeed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Manual(value) => write!(f, "{} s", value),
+            Self::Manual(value) => write!(f, "{value} s"),
             Self::AperturePriority => write!(f, "Av"),
         }
     }
@@ -117,7 +117,7 @@ impl std::str::FromStr for ExposureBias {
     type Err = num_rational::ParseRatioError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        num_rational::Rational32::from_str(&s).map(Self)
+        num_rational::Rational32::from_str(s).map(Self)
     }
 }
 
@@ -175,7 +175,7 @@ impl std::str::FromStr for Aperture {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Tv" | "S" => Ok(Self::ShutterPriority),
-            value => rust_decimal::Decimal::from_str(&value).map(Self::Manual),
+            value => rust_decimal::Decimal::from_str(value).map(Self::Manual),
         }
     }
 }
