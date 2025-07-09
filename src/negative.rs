@@ -158,6 +158,6 @@ mod tests {
 
         assert_eq!(negative.path(), PathBuf::new());
         assert_eq!(negative.roll(), Some("A1234"));
-        assert_eq!(negative.date(), datetime.with_nanosecond(0).map(Into::into));
+        assert_eq!(negative.date(), datetime.with_nanosecond(0));
     }
 }

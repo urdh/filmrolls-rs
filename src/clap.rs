@@ -5,7 +5,6 @@ use std::process::ExitCode;
 
 use ::clap::{Args, Parser, Subcommand};
 use color_eyre::eyre::{Result, WrapErr};
-use itertools::Itertools;
 
 use crate::negative::ApplyMetadata;
 use crate::{cmds, metadata, negative, rolls};
