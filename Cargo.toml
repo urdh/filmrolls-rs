@@ -27,7 +27,6 @@ num-traits = "0.2"
 serde_json = "1.0"
 shadow-rs = "1.2"
 thiserror = "2.0"
-toml = "0.8"
 ucs2 = "0.3"
 
 [dependencies.chrono]
@@ -69,6 +68,10 @@ features = ["derive"]
 [dependencies.serde_with]
 version = "3.7"
 features = ["macros", "json"]
+
+[dependencies.toml]
+version = "0.9"
+features = ["serde"]
 
 [dev-dependencies]
 pretty_assertions = "1.4"
