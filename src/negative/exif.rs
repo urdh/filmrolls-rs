@@ -7,8 +7,8 @@ use crate::metadata::Metadata;
 use crate::rolls::{Frame, Roll};
 use crate::types::*;
 
-impl super::ApplyMetadata<Roll> for little_exif::metadata::Metadata {
-    fn apply_metadata(&mut self, data: &Roll) -> Result<(), super::NegativeError> {
+impl super::ApplyMetadata for little_exif::metadata::Metadata {
+    fn apply_roll_data(&mut self, data: &Roll) -> Result<(), super::NegativeError> {
         // Set camera make & model, if available
         if let Some(camera) = &data.camera {
             self.set_tag(ExifTag::UnknownSTRING(
@@ -45,10 +45,8 @@ impl super::ApplyMetadata<Roll> for little_exif::metadata::Metadata {
         // Success!
         Ok(())
     }
-}
 
-impl super::ApplyMetadata<Frame> for little_exif::metadata::Metadata {
-    fn apply_metadata(&mut self, data: &Frame) -> Result<(), super::NegativeError> {
+    fn apply_frame_data(&mut self, data: &Frame) -> Result<(), super::NegativeError> {
         // Set original date/time
         self.set_tag(ExifTag::DateTimeOriginal(
             data.datetime.format("%Y:%m:%d %H:%M:%S").to_string(),
@@ -135,25 +133,14 @@ impl super::ApplyMetadata<Frame> for little_exif::metadata::Metadata {
         // Success!
         Ok(())
     }
-}
 
-impl super::ApplyMetadata<Metadata> for little_exif::metadata::Metadata {
-    fn apply_metadata(&mut self, data: &Metadata) -> Result<(), super::NegativeError> {
+    fn apply_author_data(
+        &mut self,
+        data: &Metadata,
+        date: &Option<chrono::NaiveDate>,
+    ) -> Result<(), super::NegativeError> {
         // Figure out what year this negative was shot, for the copyright
-        let date = None
-            .or_else(|| {
-                self.get_tag(&ExifTag::DateTimeOriginal(String::new()))
-                    .next()
-            })
-            .or_else(|| self.get_tag(&ExifTag::CreateDate(String::new())).next())
-            .and_then(|tag| match tag {
-                ExifTag::DateTimeOriginal(s) | ExifTag::CreateDate(s) => {
-                    chrono::NaiveDateTime::parse_from_str(s, "%Y:%m:%d %H:%M:%S").ok()
-                }
-                _ => None,
-            })
-            .map(|d| d.and_utc())
-            .unwrap_or_else(chrono::Utc::now);
+        let date = date.unwrap_or_else(|| chrono::Utc::now().date_naive());
 
         // Set the Artist & Copyright EXIF tags
         self.set_tag(ExifTag::Artist(data.author.name.to_owned()));
@@ -370,7 +357,7 @@ mod tests {
             unload: chrono::NaiveDateTime::MAX.and_utc().into(),
             frames: vec![],
         };
-        exif.apply_metadata(&roll)
+        exif.apply_roll_data(&roll)
             .expect("roll data should be applicable as EXIF");
 
         assert_eq!(
@@ -448,7 +435,7 @@ mod tests {
             position: Position { lat: 0.0, lon: 0.0 },
             note: None,
         };
-        exif.apply_metadata(&frame)
+        exif.apply_frame_data(&frame)
             .expect("frame data should be applicable as EXIF");
 
         assert_eq!(
@@ -558,9 +545,7 @@ mod tests {
     #[test]
     fn apply_author_data() {
         let mut exif = little_exif::metadata::Metadata::new();
-        let datetime = chrono::NaiveDate::from_ymd_opt(2025, 6, 1)
-            .and_then(|date| date.and_hms_opt(12, 15, 00))
-            .map(|date| date.and_utc());
+        let datetime = chrono::NaiveDate::from_ymd_opt(2025, 6, 1);
         let metadata = Metadata {
             author: Author {
                 name: "Simon Sigurdhsson".into(),
@@ -568,8 +553,7 @@ mod tests {
             },
             license: None,
         };
-        exif.set_tag(ExifTag::DateTimeOriginal("2025:06:01 12:15:00".into()));
-        exif.apply_metadata(&metadata)
+        exif.apply_author_data(&metadata, &datetime)
             .expect("author/license data should be applicable as EXIF");
 
         assert_eq!(

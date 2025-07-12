@@ -64,18 +64,24 @@ impl Negative {
     }
 
     /// Get the original date/time of this negative, if any
-    pub fn date(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+    pub fn date(&self) -> Option<chrono::NaiveDateTime> {
         use little_exif::exif_tag::ExifTag;
-        self.exif
-            .get_tag(&ExifTag::DateTimeOriginal(String::new()))
-            .next()
-            .and_then(|tag| match tag {
-                ExifTag::DateTimeOriginal(s) => {
-                    chrono::NaiveDateTime::parse_from_str(s, "%Y:%m:%d %H:%M:%S").ok()
-                }
-                _ => None,
-            })
-            .map(|d| d.and_utc())
+        None.or_else(|| {
+            self.exif
+                .get_tag(&ExifTag::DateTimeOriginal(String::new()))
+                .next()
+        })
+        .or_else(|| {
+            self.exif
+                .get_tag(&ExifTag::CreateDate(String::new()))
+                .next()
+        })
+        .and_then(|tag| match tag {
+            ExifTag::DateTimeOriginal(s) | ExifTag::CreateDate(s) => {
+                chrono::NaiveDateTime::parse_from_str(s, "%Y:%m:%d %H:%M:%S").ok()
+            }
+            _ => None,
+        })
     }
 
     /// Save the metadata back to the source file
@@ -86,28 +92,35 @@ impl Negative {
 }
 
 /// Trait for applying metadata to an image
-pub trait ApplyMetadata<T> {
-    fn apply_metadata(&mut self, data: &T) -> Result<(), NegativeError>;
+pub trait ApplyMetadata {
+    fn apply_roll_data(&mut self, data: &Roll) -> Result<(), NegativeError>;
+    fn apply_frame_data(&mut self, data: &Frame) -> Result<(), NegativeError>;
+    fn apply_author_data(
+        &mut self,
+        data: &Metadata,
+        date: &Option<chrono::NaiveDate>,
+    ) -> Result<(), NegativeError>;
 }
 
-impl ApplyMetadata<Roll> for Negative {
-    fn apply_metadata(&mut self, data: &Roll) -> Result<(), NegativeError> {
-        self.exif.apply_metadata(data)?;
+impl ApplyMetadata for Negative {
+    fn apply_roll_data(&mut self, data: &Roll) -> Result<(), NegativeError> {
+        self.exif.apply_roll_data(data)?;
         self.roll = Some(data.id.clone());
         Ok(())
     }
-}
 
-impl ApplyMetadata<Frame> for Negative {
-    fn apply_metadata(&mut self, data: &Frame) -> Result<(), NegativeError> {
-        self.exif.apply_metadata(data)?;
+    fn apply_frame_data(&mut self, data: &Frame) -> Result<(), NegativeError> {
+        self.exif.apply_frame_data(data)?;
         Ok(())
     }
-}
 
-impl ApplyMetadata<Metadata> for Negative {
-    fn apply_metadata(&mut self, data: &Metadata) -> Result<(), NegativeError> {
-        self.exif.apply_metadata(data)?;
+    fn apply_author_data(
+        &mut self,
+        data: &Metadata,
+        date: &Option<chrono::NaiveDate>,
+    ) -> Result<(), NegativeError> {
+        let date = date.or_else(|| self.date().map(|d| d.date()));
+        self.exif.apply_author_data(data, &date)?;
         Ok(())
     }
 }
@@ -133,7 +146,7 @@ mod tests {
         let mut negative = Negative::new();
         let datetime = chrono::Utc::now();
         negative
-            .apply_metadata(&Roll {
+            .apply_roll_data(&Roll {
                 id: "A1234".into(),
                 film: None,
                 speed: FilmSpeed::from_din(21),
@@ -144,7 +157,7 @@ mod tests {
             })
             .expect("roll data should be applicable to negative");
         negative
-            .apply_metadata(&Frame {
+            .apply_frame_data(&Frame {
                 lens: None,
                 aperture: None,
                 shutter_speed: None,
@@ -158,6 +171,9 @@ mod tests {
 
         assert_eq!(negative.path(), PathBuf::new());
         assert_eq!(negative.roll(), Some("A1234"));
-        assert_eq!(negative.date(), datetime.with_nanosecond(0));
+        assert_eq!(
+            negative.date(),
+            datetime.with_nanosecond(0).map(|d| d.naive_utc())
+        );
     }
 }
