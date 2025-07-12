@@ -19,12 +19,10 @@ impl super::ApplyMetadata for little_exif::metadata::Metadata {
                 0xc615,
                 ExifTagGroup::GENERIC,
             ));
-            if !camera.make.is_empty() {
-                self.set_tag(ExifTag::Make(camera.make.clone()));
+            if let Some(make) = camera.make() {
+                self.set_tag(ExifTag::Make(make.to_owned()));
             }
-            if !camera.model.is_empty() {
-                self.set_tag(ExifTag::Model(camera.model.clone()));
-            }
+            self.set_tag(ExifTag::Model(camera.model().to_owned()));
         }
 
         // Set film name in user comment, if available
@@ -62,12 +60,10 @@ impl super::ApplyMetadata for little_exif::metadata::Metadata {
                 0xfdea,
                 ExifTagGroup::EXIF,
             ));
-            if !lens.make.is_empty() {
-                self.set_tag(ExifTag::LensMake(lens.make.clone()));
+            if let Some(make) = lens.make() {
+                self.set_tag(ExifTag::LensMake(make.to_owned()));
             }
-            if !lens.model.is_empty() {
-                self.set_tag(ExifTag::LensModel(lens.model.clone()));
-            }
+            self.set_tag(ExifTag::LensModel(lens.model().to_owned()));
         }
 
         // Set focal length and optionally 35mm equivalent focal length
@@ -352,7 +348,7 @@ mod tests {
             id: "A1234".into(),
             film: Some(Film("Ilford Delta 100".into())),
             speed: FilmSpeed::from_din(21),
-            camera: Some(Camera {
+            camera: Some(Camera::MakeModel {
                 make: "Voigtländer".into(),
                 model: "Bessa R2M".into(),
             }),
@@ -385,19 +381,11 @@ mod tests {
         );
         assert_eq!(
             exif.get_tag(&ExifTag::Make(String::new())).next(),
-            roll.camera
-                .as_ref()
-                .map(|c| c.make.clone())
-                .map(ExifTag::Make)
-                .as_ref()
+            Some(ExifTag::Make("Voigtländer".into())).as_ref()
         );
         assert_eq!(
             exif.get_tag(&ExifTag::Model(String::new())).next(),
-            roll.camera
-                .as_ref()
-                .map(|c| c.model.clone())
-                .map(ExifTag::Model)
-                .as_ref()
+            Some(ExifTag::Model("Bessa R2M".into())).as_ref()
         );
         assert_eq!(
             exif.get_tag(&ExifTag::UserComment(vec![])).next(),
@@ -427,7 +415,7 @@ mod tests {
             .and_then(|date| date.and_hms_opt(12, 15, 00))
             .map(|date| date.and_utc());
         let frame = Frame {
-            lens: Some(Lens {
+            lens: Some(Lens::MakeModel {
                 make: "Voigtländer".into(),
                 model: "Color Skopar 35/2.5 Pancake II".into(),
             }),
@@ -469,21 +457,11 @@ mod tests {
         );
         assert_eq!(
             exif.get_tag(&ExifTag::LensMake(String::new())).next(),
-            frame
-                .lens
-                .as_ref()
-                .map(|c| c.make.clone())
-                .map(ExifTag::LensMake)
-                .as_ref()
+            Some(ExifTag::LensMake("Voigtländer".into())).as_ref()
         );
         assert_eq!(
             exif.get_tag(&ExifTag::LensModel(String::new())).next(),
-            frame
-                .lens
-                .as_ref()
-                .map(|c| c.model.clone())
-                .map(ExifTag::LensModel)
-                .as_ref()
+            Some(ExifTag::LensModel("Color Skopar 35/2.5 Pancake II".into())).as_ref()
         );
         assert_eq!(
             exif.get_tag(&ExifTag::FocalLength(vec![])).next(),

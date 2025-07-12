@@ -69,9 +69,32 @@ impl std::fmt::Display for Film {
 /// A camera make/model, e.g. "Voigtländer Bessa R2M"
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(DeserializeFromStr)]
-pub struct Camera {
-    pub make: String,
-    pub model: String,
+pub enum Camera {
+    Simple { full_name: String },
+    MakeModel { make: String, model: String },
+}
+
+impl Camera {
+    pub fn from_make_model(make: Option<String>, model: String) -> Self {
+        match make {
+            Some(make) => Self::MakeModel { make, model },
+            None => Self::Simple { full_name: model },
+        }
+    }
+
+    pub fn make(&self) -> Option<&str> {
+        match self {
+            Self::MakeModel { make, .. } => Some(make),
+            Self::Simple { .. } => None,
+        }
+    }
+
+    pub fn model(&self) -> &str {
+        match self {
+            Self::MakeModel { model, .. } => model,
+            Self::Simple { full_name } => full_name,
+        }
+    }
 }
 
 impl TryFrom<&str> for Camera {
@@ -86,30 +109,49 @@ impl FromStr for Camera {
     type Err = std::convert::Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.trim().split_once(' ') {
-            Some((make, model)) => Ok(Self {
-                make: make.trim().into(),
-                model: model.trim().into(),
-            }),
-            None => Ok(Self {
-                make: Default::default(),
-                model: s.into(),
-            }),
-        }
+        Ok(Self::Simple {
+            full_name: s.trim().into(),
+        })
     }
 }
 
 impl std::fmt::Display for Camera {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.make, self.model)
+        match self {
+            Self::Simple { full_name } => full_name.fmt(f),
+            Self::MakeModel { make, model } => write!(f, "{make} {model}"),
+        }
     }
 }
 
 /// A lens make/model, e.g. "Voigtländer Color Skopar 35/2.5 Pancake II"
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct Lens {
-    pub make: String,
-    pub model: String,
+pub enum Lens {
+    Simple { full_name: String },
+    MakeModel { make: String, model: String },
+}
+
+impl Lens {
+    pub fn from_make_model(make: Option<String>, model: String) -> Self {
+        match make {
+            Some(make) => Self::MakeModel { make, model },
+            None => Self::Simple { full_name: model },
+        }
+    }
+
+    pub fn make(&self) -> Option<&str> {
+        match self {
+            Self::MakeModel { make, .. } => Some(make),
+            Self::Simple { .. } => None,
+        }
+    }
+
+    pub fn model(&self) -> &str {
+        match self {
+            Self::MakeModel { model, .. } => model,
+            Self::Simple { full_name } => full_name,
+        }
+    }
 }
 
 impl TryFrom<&str> for Lens {
@@ -124,22 +166,18 @@ impl FromStr for Lens {
     type Err = std::convert::Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.trim().split_once(' ') {
-            Some((make, model)) => Ok(Self {
-                make: make.trim().into(),
-                model: model.trim().into(),
-            }),
-            None => Ok(Self {
-                make: Default::default(),
-                model: s.into(),
-            }),
-        }
+        Ok(Self::Simple {
+            full_name: s.trim().into(),
+        })
     }
 }
 
 impl std::fmt::Display for Lens {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.make, self.model)
+        match self {
+            Self::Simple { full_name } => full_name.fmt(f),
+            Self::MakeModel { make, model } => write!(f, "{make} {model}"),
+        }
     }
 }
 
@@ -186,14 +224,10 @@ impl TryFrom<lightme::Frame<'_>> for Frame {
 
     fn try_from(value: lightme::Frame<'_>) -> Result<Self, Self::Error> {
         Ok(Self {
-            lens: (|| {
-                Some(Lens {
-                    make: value.lens_make.map(Into::into).unwrap_or_default(),
-                    model: value
-                        .lens_model
-                        .map(|v| regex_replace!(r"(\s+\(.*?\))$", v.as_ref(), "").into_owned())?,
-                })
-            })(),
+            lens: value
+                .lens_model
+                .map(|v| regex_replace!(r"(\s+\(.*?\))$", v.as_ref(), "").into_owned())
+                .map(|m| Lens::from_make_model(value.lens_make.map(Into::into), m)),
             aperture: value.f_number,
             shutter_speed: value.exposure_time,
             focal_length: (|| {
@@ -294,14 +328,10 @@ impl TryFrom<lightme::Data<'_>> for Roll {
                 .map_err(|_| SourceError::InvalidData("film (`DocumentName`)"))?,
             speed: FilmSpeed::from_iso(first.iso_speed.into())
                 .map_err(|_| SourceError::InvalidData("film speed (`ISOSpeed`)"))?,
-            camera: (|| {
-                Some(Camera {
-                    make: first.make.map(Into::into).unwrap_or_default(),
-                    model: first
-                        .model
-                        .map(|v| regex_replace!(r"(\s+\(.*?\))$", v.as_ref(), "").into_owned())?,
-                })
-            })(),
+            camera: first
+                .model
+                .map(|v| regex_replace!(r"(\s+\(.*?\))$", v.as_ref(), "").into_owned())
+                .map(|m| Camera::from_make_model(first.make.map(Into::into), m)),
             load: comment.load_date.into(),
             unload: comment.unload_date.into(),
             frames: expand_indexed(value.into_iter().map(|frame| -> (usize, Result<Frame, _>) {
@@ -427,49 +457,56 @@ mod tests {
     fn parse_camera() {
         assert_eq!(
             Camera::try_from("Voigtländer Bessa R2M"),
-            Ok(Camera {
-                make: "Voigtländer".into(),
-                model: "Bessa R2M".into()
+            Ok(Camera::Simple {
+                full_name: "Voigtländer Bessa R2M".into()
             })
         );
-        assert_eq!(
-            Camera::try_from("Voigtländer"),
-            Ok(Camera {
-                make: "".into(),
-                model: "Voigtländer".into()
-            })
-        );
-        assert_eq!(
-            Camera::try_from(""),
-            Ok(Camera {
-                make: "".into(),
-                model: "".into()
-            })
-        );
+    }
+
+    #[test]
+    fn camera_from_make_model() {
+        let make_model = Camera::from_make_model(Some("Voigtländer".into()), "Bessa R2M".into());
+        let only_model = Camera::from_make_model(None, "Voigtländer Bessa R2M".into());
+        assert_eq!(make_model.to_string(), "Voigtländer Bessa R2M");
+        assert_eq!(only_model.to_string(), "Voigtländer Bessa R2M");
+        assert_eq!(make_model.make(), Some("Voigtländer"));
+        assert_eq!(only_model.make(), None);
+        assert_eq!(make_model.model(), "Bessa R2M");
+        assert_eq!(only_model.model(), "Voigtländer Bessa R2M");
     }
 
     #[test]
     fn parse_lens() {
         assert_eq!(
             Lens::try_from("Voigtländer Color Skopar 35/2.5 Pancake II"),
-            Ok(Lens {
-                make: "Voigtländer".into(),
-                model: "Color Skopar 35/2.5 Pancake II".into()
+            Ok(Lens::Simple {
+                full_name: "Voigtländer Color Skopar 35/2.5 Pancake II".into()
             })
         );
+    }
+
+    #[test]
+    fn lens_from_make_model() {
+        let make_model = Lens::from_make_model(
+            Some("Voigtländer".into()),
+            "Color Skopar 35/2.5 Pancake II".into(),
+        );
+        let only_model =
+            Lens::from_make_model(None, "Voigtländer Color Skopar 35/2.5 Pancake II".into());
         assert_eq!(
-            Lens::try_from("Voigtländer"),
-            Ok(Lens {
-                make: "".into(),
-                model: "Voigtländer".into()
-            })
+            make_model.to_string(),
+            "Voigtländer Color Skopar 35/2.5 Pancake II"
         );
         assert_eq!(
-            Lens::try_from(""),
-            Ok(Lens {
-                make: "".into(),
-                model: "".into()
-            })
+            only_model.to_string(),
+            "Voigtländer Color Skopar 35/2.5 Pancake II"
+        );
+        assert_eq!(make_model.make(), Some("Voigtländer"));
+        assert_eq!(only_model.make(), None);
+        assert_eq!(make_model.model(), "Color Skopar 35/2.5 Pancake II");
+        assert_eq!(
+            only_model.model(),
+            "Voigtländer Color Skopar 35/2.5 Pancake II"
         );
     }
 
@@ -491,9 +528,8 @@ mod tests {
             note: Some("Notes for this frame!".into()),
         };
         let expected = Frame {
-            lens: Some(Lens {
-                make: "Voigtländer".into(),
-                model: "Color Skopar 35/2.5 Pancake II".into(),
+            lens: Some(Lens::Simple {
+                full_name: "Voigtländer Color Skopar 35/2.5 Pancake II".into(),
             }),
             aperture: base_frame.aperture,
             shutter_speed: base_frame.shutter_speed,
@@ -551,9 +587,8 @@ mod tests {
             id: base_roll.note.clone().unwrap().into(),
             film: Some(Film("Ilford Delta 100".into())),
             speed: FilmSpeed::from_din(21), // ISO 100/21°
-            camera: Some(Camera {
-                make: "Voigtländer".into(),
-                model: "Bessa R2M".into(),
+            camera: Some(Camera::Simple {
+                full_name: "Voigtländer Bessa R2M".into(),
             }),
             load: base_roll.load.clone().into(),
             unload: base_roll.unload.clone().into(),
@@ -631,7 +666,7 @@ mod tests {
             }),
         };
         let expected = Frame {
-            lens: Some(Lens {
+            lens: Some(Lens::MakeModel {
                 make: "Voigtländer".into(),
                 model: "35mm f/2,5 Color Skopar Pancake II".into(),
             }),
@@ -657,9 +692,8 @@ mod tests {
                 ..base_frame.clone()
             }),
             Ok(Frame {
-                lens: Some(Lens {
-                    make: Default::default(),
-                    model: "35mm f/2,5 Color Skopar Pancake II".into()
+                lens: Some(Lens::Simple {
+                    full_name: "35mm f/2,5 Color Skopar Pancake II".into()
                 }),
                 ..expected.clone()
             })
@@ -736,14 +770,14 @@ mod tests {
             id: base_frame.reel_name.clone().unwrap().into(),
             film: Some(Film("Ilford SFX 200".into())),
             speed: FilmSpeed::from_din(24), // ISO 200/24°
-            camera: Some(Camera {
+            camera: Some(Camera::MakeModel {
                 make: "Voigtländer".into(),
                 model: "Bessa R2M".into(),
             }),
             load: base_frame.user_comment.clone().unwrap().load_date.into(),
             unload: base_frame.user_comment.clone().unwrap().unload_date.into(),
             frames: vec![Some(Frame {
-                lens: Some(Lens {
+                lens: Some(Lens::MakeModel {
                     make: "Voigtländer".into(),
                     model: "35mm f/2,5 Color Skopar Pancake II".into(),
                 }),
@@ -797,9 +831,8 @@ mod tests {
                 ..base_frame.clone()
             }]),
             Ok(Roll {
-                camera: Some(Camera {
-                    make: Default::default(),
-                    model: "Bessa R2M".into()
+                camera: Some(Camera::Simple {
+                    full_name: "Bessa R2M".into()
                 }),
                 ..expected.clone()
             })

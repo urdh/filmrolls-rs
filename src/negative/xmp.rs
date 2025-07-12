@@ -99,7 +99,7 @@ mod tests {
             id: "A1234".into(),
             film: Some(Film("Ilford Delta 100".into())),
             speed: FilmSpeed::from_din(21),
-            camera: Some(Camera {
+            camera: Some(Camera::MakeModel {
                 make: "Voigtländer".into(),
                 model: "Bessa R2M".into(),
             }),
@@ -119,7 +119,7 @@ mod tests {
             .and_then(|date| date.and_hms_opt(12, 15, 00))
             .map(|date| date.and_utc());
         let frame = Frame {
-            lens: Some(Lens {
+            lens: Some(Lens::MakeModel {
                 make: "Voigtländer".into(),
                 model: "Color Skopar 35/2.5 Pancake II".into(),
             }),
