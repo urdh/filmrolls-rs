@@ -232,8 +232,8 @@ impl Commands {
                         cmds::match_negatives(roll.frames.iter(), images.into_negatives())?
                             .into_iter()
                             .map(|(frame, mut negative)| {
-                                negative.apply_metadata(&roll)?;
-                                negative.apply_metadata(frame)?;
+                                negative.apply_roll_data(&roll)?;
+                                negative.apply_frame_data(frame)?;
                                 if !dry_run {
                                     negative.save()?;
                                 }
@@ -258,7 +258,7 @@ impl Commands {
                 let metadata = metadata.into_meta()?;
                 let negatives = images.into_negatives().map(|negative| {
                     negative.and_then(|mut negative| {
-                        negative.apply_metadata(&metadata)?;
+                        negative.apply_author_data(&metadata, &None)?;
                         if !dry_run {
                             negative.save()?;
                         }
