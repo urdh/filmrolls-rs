@@ -1,24 +1,37 @@
 //! Trait for applying various metadata to a single image
+use little_exif::{exif_tag::ExifTag, ifd::ExifTagGroup};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use crate::metadata::Metadata;
 use crate::rolls::{Frame, Roll};
 
 mod exif;
+mod xmp;
 
 /// Metadata application errors
 #[derive(Debug)]
 #[derive(thiserror::Error)]
+#[allow(clippy::enum_variant_names)]
 pub enum NegativeError {
     /// Generic I/O error
     #[error(transparent)]
     IoError(#[from] std::io::Error),
+
+    // XMP Toolkit error
+    #[error(transparent)]
+    XmpError(#[from] xmp_toolkit::XmpError),
+
+    // UTF8 conversion error
+    #[error(transparent)]
+    Utf8Error(#[from] std::string::FromUtf8Error),
 }
 
 /// A "negative" (image with metadata)
 #[derive(Clone)]
 pub struct Negative {
     exif: little_exif::metadata::Metadata,
+    xmp: xmp_toolkit::XmpMeta,
     path: PathBuf,
     roll: Option<String>,
 }
@@ -27,6 +40,7 @@ impl std::fmt::Debug for Negative {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Negative")
             .field("exif", &"..")
+            .field("xmp", &self.xmp)
             .field("path", &self.path)
             .field("roll", &self.roll)
             .finish()
@@ -36,8 +50,30 @@ impl std::fmt::Debug for Negative {
 impl Negative {
     /// Create a new negative based on the given image
     pub fn new_from_path(path: &Path) -> Result<Negative, NegativeError> {
+        // Read EXIF data using little_exif, then read the XMP data directly
+        // from the EXIF tag to avoid the XMP Toolkit reconciling legacy tags.
+        let exif_data = little_exif::metadata::Metadata::new_from_path(path)?;
+        let xmp_data = exif_data
+            .get_tag(&ExifTag::UnknownINT8U(
+                vec![],
+                0x02bc,
+                ExifTagGroup::GENERIC,
+            ))
+            .next()
+            .and_then(|tag| match tag {
+                ExifTag::UnknownUNDEF(value, _, _) => Some(value),
+                ExifTag::UnknownINT8U(value, _, _) => Some(value),
+                _ => None,
+            })
+            .map(|data| -> Result<xmp_toolkit::XmpMeta, NegativeError> {
+                String::from_utf8(data.to_vec())
+                    .map_err(Into::<NegativeError>::into)
+                    .and_then(|s| Ok(FromStr::from_str(&s)?))
+            })
+            .unwrap_or_else(|| Ok(xmp_toolkit::XmpMeta::new()?));
         Ok(Self {
-            exif: little_exif::metadata::Metadata::new_from_path(path)?,
+            exif: exif_data,
+            xmp: xmp_data?,
             path: path.into(),
             roll: None,
         })
@@ -48,6 +84,8 @@ impl Negative {
     pub(crate) fn new() -> Negative {
         Self {
             exif: little_exif::metadata::Metadata::new(),
+            xmp: xmp_toolkit::XmpMeta::new()
+                .expect("it should be possible to create empty XMP metadata"),
             path: PathBuf::new(),
             roll: None,
         }
@@ -85,7 +123,17 @@ impl Negative {
     }
 
     /// Save the metadata back to the source file
-    pub fn save(&self) -> Result<(), NegativeError> {
+    pub fn save(&mut self) -> Result<(), NegativeError> {
+        // Again, write XMP data directly to the little_exif data structure to
+        // avoid XMP Toolkit touching all the non-XMP EXIF tags.
+        use xmp_toolkit::ToStringOptions;
+        self.exif.set_tag(ExifTag::UnknownINT8U(
+            self.xmp
+                .to_string_with_options(ToStringOptions::default().use_compact_format())?
+                .into_bytes(),
+            0x02bc,
+            ExifTagGroup::GENERIC,
+        ));
         self.exif.write_to_file(&self.path)?;
         Ok(())
     }
@@ -105,12 +153,14 @@ pub trait ApplyMetadata {
 impl ApplyMetadata for Negative {
     fn apply_roll_data(&mut self, data: &Roll) -> Result<(), NegativeError> {
         self.exif.apply_roll_data(data)?;
+        self.xmp.apply_roll_data(data)?;
         self.roll = Some(data.id.clone());
         Ok(())
     }
 
     fn apply_frame_data(&mut self, data: &Frame) -> Result<(), NegativeError> {
         self.exif.apply_frame_data(data)?;
+        self.xmp.apply_frame_data(data)?;
         Ok(())
     }
 
@@ -121,6 +171,7 @@ impl ApplyMetadata for Negative {
     ) -> Result<(), NegativeError> {
         let date = date.or_else(|| self.date().map(|d| d.date()));
         self.exif.apply_author_data(data, &date)?;
+        self.xmp.apply_author_data(data, &date)?;
         Ok(())
     }
 }
