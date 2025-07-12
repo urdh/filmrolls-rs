@@ -9,6 +9,9 @@ use crate::types::*;
 
 impl super::ApplyMetadata for little_exif::metadata::Metadata {
     fn apply_roll_data(&mut self, data: &Roll) -> Result<(), super::NegativeError> {
+        // Set EXIF version
+        self.set_tag(ExifTag::ExifVersion(b"0231".into()));
+
         // Set camera make & model, if available
         if let Some(camera) = &data.camera {
             self.set_tag(ExifTag::UnknownSTRING(
@@ -360,6 +363,10 @@ mod tests {
         exif.apply_roll_data(&roll)
             .expect("roll data should be applicable as EXIF");
 
+        assert_eq!(
+            exif.get_tag(&ExifTag::ExifVersion(vec![])).next(),
+            Some(ExifTag::ExifVersion(b"0231".into())).as_ref()
+        );
         assert_eq!(
             exif.get_tag(&ExifTag::UnknownSTRING(
                 String::new(),
