@@ -1,5 +1,5 @@
 //! Deserialization for *lightme* JSON data
-use chrono::{DateTime, FixedOffset};
+use chrono::NaiveDateTime;
 use serde::Deserialize;
 use serde_with::{serde_as, DeserializeFromStr};
 
@@ -67,25 +67,17 @@ pub type Text<'a> = std::borrow::Cow<'a, str>;
 /// Custom date/time type with bespoke parsing
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(DeserializeFromStr)]
-pub struct CustomDateTime(DateTime<FixedOffset>);
+pub struct CustomDateTime(NaiveDateTime);
 
-impl<Tz> From<CustomDateTime> for DateTime<Tz>
-where
-    Tz: chrono::TimeZone,
-    DateTime<Tz>: From<DateTime<FixedOffset>>,
-{
+impl From<CustomDateTime> for NaiveDateTime {
     fn from(value: CustomDateTime) -> Self {
-        value.0.into()
+        value.0
     }
 }
 
-impl<Tz> From<DateTime<Tz>> for CustomDateTime
-where
-    Tz: chrono::TimeZone,
-    DateTime<FixedOffset>: From<DateTime<Tz>>,
-{
-    fn from(value: DateTime<Tz>) -> Self {
-        Self(value.into())
+impl From<NaiveDateTime> for CustomDateTime {
+    fn from(value: NaiveDateTime) -> Self {
+        Self(value)
     }
 }
 
@@ -93,15 +85,8 @@ impl std::str::FromStr for CustomDateTime {
     type Err = chrono::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        chrono::DateTime::<FixedOffset>::parse_from_rfc3339(s)
-            .or_else(|_| {
-                chrono::NaiveDateTime::parse_from_str(s, "%Y:%m:%d %H:%M:%S")
-                    .map(|date| date.and_utc().into())
-            })
-            .or_else(|_| {
-                chrono::NaiveDateTime::parse_from_str(s, "%d %b %Y at %H:%M")
-                    .map(|date| date.and_utc().into())
-            })
+        chrono::NaiveDateTime::parse_from_str(s, "%Y:%m:%d %H:%M:%S")
+            .or_else(|_| chrono::NaiveDateTime::parse_from_str(s, "%d %b %Y at %H:%M"))
             .map(Self)
     }
 }
@@ -142,7 +127,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
+    use chrono::NaiveDate;
     use num_rational::Rational32;
     use pretty_assertions::assert_eq;
     use rust_decimal::Decimal;
@@ -153,14 +138,14 @@ mod tests {
         use std::str::FromStr;
         assert_eq!(
             CustomDateTime::from_str("2022:04:30 18:29:15")?.0,
-            chrono::Utc
-                .with_ymd_and_hms(2022, 4, 30, 18, 29, 15)
+            NaiveDate::from_ymd_opt(2022, 4, 30)
+                .and_then(|d| d.and_hms_opt(18, 29, 15))
                 .unwrap()
         );
         assert_eq!(
             CustomDateTime::from_str("30 Apr 2022 at 17:57")?.0,
-            chrono::Utc
-                .with_ymd_and_hms(2022, 4, 30, 17, 57, 00)
+            NaiveDate::from_ymd_opt(2022, 4, 30)
+                .and_then(|d| d.and_hms_opt(17, 57, 00))
                 .unwrap()
         );
         Ok(())
@@ -219,8 +204,8 @@ mod tests {
                 "#
             )?,
             vec![Frame {
-                date_time_original: chrono::Utc
-                    .with_ymd_and_hms(2022, 4, 30, 18, 29, 15)
+                date_time_original: NaiveDate::from_ymd_opt(2022, 4, 30)
+                    .and_then(|d| d.and_hms_opt(18, 29, 15))
                     .unwrap()
                     .into(),
                 description: Some("Ilford SFX 200 (135)".into()),
@@ -239,12 +224,12 @@ mod tests {
                 model: Some("Bessa R2M (Voigtländer)".into()),
                 reel_name: Some("A0020".into()),
                 user_comment: Some(Notes {
-                    load_date: chrono::Utc
-                        .with_ymd_and_hms(2022, 4, 30, 17, 57, 00)
+                    load_date: NaiveDate::from_ymd_opt(2022, 4, 30)
+                        .and_then(|d| d.and_hms_opt(17, 57, 00))
                         .unwrap()
                         .into(),
-                    unload_date: chrono::Utc
-                        .with_ymd_and_hms(2022, 5, 1, 15, 12, 00)
+                    unload_date: NaiveDate::from_ymd_opt(2022, 5, 1)
+                        .and_then(|d| d.and_hms_opt(15, 12, 00))
                         .unwrap()
                         .into(),
                 })

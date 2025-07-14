@@ -5,7 +5,7 @@
 //! to EXIF data or displayed using the `Display` trait.
 use std::str::FromStr;
 
-use chrono::{DateTime, FixedOffset};
+use chrono::NaiveDateTime;
 use itertools::Itertools;
 use lazy_regex::regex_replace;
 use serde_with::DeserializeFromStr;
@@ -189,7 +189,7 @@ pub struct Frame {
     pub shutter_speed: Option<ShutterSpeed>,
     pub focal_length: Option<FocalLength>,
     pub compensation: Option<ExposureBias>,
-    pub datetime: DateTime<FixedOffset>,
+    pub datetime: NaiveDateTime,
     pub position: Position,
     pub note: Option<String>,
 }
@@ -261,8 +261,8 @@ pub struct Roll {
     pub film: Option<Film>,
     pub speed: FilmSpeed,
     pub camera: Option<Camera>,
-    pub load: DateTime<FixedOffset>,
-    pub unload: DateTime<FixedOffset>,
+    pub load: NaiveDateTime,
+    pub unload: NaiveDateTime,
     pub frames: Vec<Option<Frame>>,
 }
 
@@ -409,7 +409,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
+    use chrono::NaiveDate;
     use itertools::assert_equal;
     use pretty_assertions::assert_eq;
 
@@ -519,8 +519,8 @@ mod tests {
             compensation: None,
             accessory: None,
             number: 1,
-            date: chrono::Utc
-                .with_ymd_and_hms(2016, 5, 13, 14, 12, 40)
+            date: NaiveDate::from_ymd_opt(2016, 5, 13)
+                .and_then(|d| d.and_hms_opt(14, 12, 40))
                 .unwrap()
                 .into(),
             latitude: 57.700767,
@@ -572,12 +572,12 @@ mod tests {
             title: Some("Ilford Delta 100".into()),
             speed: 100,
             camera: Some("Voigtländer Bessa R2M".into()),
-            load: chrono::Utc
-                .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
+            load: NaiveDate::from_ymd_opt(2016, 3, 28)
+                .and_then(|d| d.and_hms_opt(15, 16, 36))
                 .unwrap()
                 .into(),
-            unload: chrono::Utc
-                .with_ymd_and_hms(2016, 5, 21, 14, 13, 15)
+            unload: NaiveDate::from_ymd_opt(2016, 5, 21)
+                .and_then(|d| d.and_hms_opt(14, 13, 15))
                 .unwrap()
                 .into(),
             note: Some("A0012".into()),
@@ -635,8 +635,8 @@ mod tests {
     #[test]
     fn convert_lightme_frame() {
         let base_frame = lightme::Frame {
-            date_time_original: chrono::Utc
-                .with_ymd_and_hms(2022, 4, 30, 18, 29, 15)
+            date_time_original: NaiveDate::from_ymd_opt(2022, 4, 30)
+                .and_then(|d| d.and_hms_opt(18, 29, 15))
                 .unwrap()
                 .into(),
             description: Some("Ilford SFX 200 (135)".into()),
@@ -655,12 +655,12 @@ mod tests {
             model: Some("Bessa R2M (Voigtländer)".into()),
             reel_name: Some("A0020".into()),
             user_comment: Some(lightme::Notes {
-                load_date: chrono::Utc
-                    .with_ymd_and_hms(2022, 4, 30, 17, 57, 00)
+                load_date: NaiveDate::from_ymd_opt(2022, 4, 30)
+                    .and_then(|d| d.and_hms_opt(17, 57, 00))
                     .unwrap()
                     .into(),
-                unload_date: chrono::Utc
-                    .with_ymd_and_hms(2022, 5, 1, 15, 12, 00)
+                unload_date: NaiveDate::from_ymd_opt(2022, 5, 1)
+                    .and_then(|d| d.and_hms_opt(15, 12, 00))
                     .unwrap()
                     .into(),
             }),
@@ -736,8 +736,8 @@ mod tests {
     #[test]
     fn convert_lightme_roll() {
         let base_frame = lightme::Frame {
-            date_time_original: chrono::Utc
-                .with_ymd_and_hms(2022, 4, 30, 18, 29, 15)
+            date_time_original: NaiveDate::from_ymd_opt(2022, 4, 30)
+                .and_then(|d| d.and_hms_opt(18, 29, 15))
                 .unwrap()
                 .into(),
             description: Some("Ilford SFX 200 (135)".into()),
@@ -756,12 +756,12 @@ mod tests {
             model: Some("Bessa R2M (Voigtländer)".into()),
             reel_name: Some("A0020".into()),
             user_comment: Some(lightme::Notes {
-                load_date: chrono::Utc
-                    .with_ymd_and_hms(2022, 4, 30, 17, 57, 00)
+                load_date: NaiveDate::from_ymd_opt(2022, 4, 30)
+                    .and_then(|d| d.and_hms_opt(17, 57, 00))
                     .unwrap()
                     .into(),
-                unload_date: chrono::Utc
-                    .with_ymd_and_hms(2022, 5, 1, 15, 12, 00)
+                unload_date: NaiveDate::from_ymd_opt(2022, 5, 1)
+                    .and_then(|d| d.and_hms_opt(15, 12, 00))
                     .unwrap()
                     .into(),
             }),

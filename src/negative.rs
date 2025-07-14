@@ -195,15 +195,15 @@ mod tests {
     #[test]
     fn updated_frame_details() {
         let mut negative = Negative::new();
-        let datetime = chrono::Utc::now();
+        let datetime = chrono::Utc::now().naive_local();
         negative
             .apply_roll_data(&Roll {
                 id: "A1234".into(),
                 film: None,
                 speed: FilmSpeed::from_din(21),
                 camera: None,
-                load: chrono::NaiveDateTime::MIN.and_utc().into(),
-                unload: chrono::NaiveDateTime::MAX.and_utc().into(),
+                load: chrono::NaiveDateTime::MIN,
+                unload: chrono::NaiveDateTime::MAX,
                 frames: vec![],
             })
             .expect("roll data should be applicable to negative");
@@ -214,7 +214,7 @@ mod tests {
                 shutter_speed: None,
                 focal_length: None,
                 compensation: None,
-                datetime: datetime.into(),
+                datetime,
                 position: Default::default(),
                 note: None,
             })
@@ -222,9 +222,6 @@ mod tests {
 
         assert_eq!(negative.path(), PathBuf::new());
         assert_eq!(negative.roll(), Some("A1234"));
-        assert_eq!(
-            negative.date(),
-            datetime.with_nanosecond(0).map(|d| d.naive_utc())
-        );
+        assert_eq!(negative.date(), datetime.with_nanosecond(0));
     }
 }
