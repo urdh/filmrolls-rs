@@ -138,12 +138,16 @@ pub(super) struct Frame<'a> {
 }
 
 /// Copy-on-write text value from the XML source
-pub type Text<'a> = std::borrow::Cow<'a, str>;
+pub(super) type Text<'a> = std::borrow::Cow<'a, str>;
 
 /// Sloppy RFC3339 date/time type with lax parsing
+///
+/// In addition to plain RFC3339, this type supports RFC3339-like date/time
+/// values without timezone but *with* fractional seconds, as well as supporting
+/// plain ISO8601 dates without an associated time (falling back to midnight).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(DeserializeFromStr)]
-pub struct XmlDateTime(NaiveDateTime);
+pub(super) struct XmlDateTime(NaiveDateTime);
 
 impl From<XmlDateTime> for NaiveDateTime {
     fn from(value: XmlDateTime) -> Self {

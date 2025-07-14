@@ -1,4 +1,6 @@
-//! Wrapper around EXIF metadata for a single image
+//! Implements [`super::ApplyMetadata`] for [little_exif]
+//!
+//! [little_exif]: https://docs.rs/little_exif/latest/little_exif/
 use little_exif::exif_tag::ExifTag;
 use little_exif::ifd::ExifTagGroup;
 use little_exif::rational::{iR64, uR64};
@@ -241,7 +243,7 @@ where
     .reduced()
 }
 
-// Convert a string to an EXIF UCS-2 UNDEF value
+/// Convert a string to an EXIF UCS-2 UNDEF value
 fn to_exif_undef(
     value: &str,
     endian: little_exif::endian::Endian,

@@ -5,10 +5,10 @@ use serde_with::{serde_as, DeserializeFromStr};
 
 use crate::types::{Aperture, ShutterSpeed};
 
-/// Data container alias
+/// Outer JSON array
 pub(super) type Data<'a> = Vec<Frame<'a>>;
 
-/// Frame object
+/// Frame JSON object
 #[serde_as]
 #[derive(Clone, PartialEq, PartialOrd, Debug)]
 #[derive(Deserialize)]
@@ -39,7 +39,11 @@ pub(super) struct Frame<'a> {
     pub user_comment: Option<Notes>,
 }
 
-/// Custom notes object
+/// Custom user comment representation
+///
+/// The user comment field provided by lightme contains the roll load/unload
+/// dates, so we must parse its contents to extract this information. It also
+/// includes roll & development notes, but these are discarded.
 #[derive(Clone, PartialEq, PartialOrd, Debug)]
 #[derive(DeserializeFromStr)]
 pub(super) struct Notes {
@@ -62,12 +66,15 @@ impl std::str::FromStr for Notes {
 }
 
 /// Copy-on-write text value from the JSON source
-pub type Text<'a> = std::borrow::Cow<'a, str>;
+pub(super) type Text<'a> = std::borrow::Cow<'a, str>;
 
 /// Custom date/time type with bespoke parsing
+///
+/// This allows us to parse both EXIF-like date/time values *and* the
+/// human-readable date/time format used in the user comment (see `Notes`).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(DeserializeFromStr)]
-pub struct CustomDateTime(NaiveDateTime);
+pub(super) struct CustomDateTime(NaiveDateTime);
 
 impl From<CustomDateTime> for NaiveDateTime {
     fn from(value: CustomDateTime) -> Self {
@@ -91,7 +98,7 @@ impl std::str::FromStr for CustomDateTime {
     }
 }
 
-/// Convert textual GPS coords to decimal lat/long
+/// Convert textual GPS coordinates to decimal latitude/longitude
 fn deserialize_gps_coord<'de, D>(de: D) -> Result<f64, D::Error>
 where
     D: serde::Deserializer<'de>,

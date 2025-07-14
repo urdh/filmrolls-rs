@@ -1,4 +1,9 @@
-//! Trait for applying various metadata to a single image
+//! Interface to an on-disk "negative"
+//!
+//! This module provides a *negative* definition which represents an
+//! on-disk image file with associated EXIF and XMP metadata. It also
+//! provides a trait allowing film roll and author metadata to be
+//! applied to the on-disk image.
 use little_exif::{exif_tag::ExifTag, ifd::ExifTagGroup};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -18,11 +23,11 @@ pub enum NegativeError {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
 
-    // XMP Toolkit error
+    /// XMP Toolkit error
     #[error(transparent)]
     XmpError(#[from] xmp_toolkit::XmpError),
 
-    // UTF8 conversion error
+    /// UTF8 conversion error
     #[error(transparent)]
     Utf8Error(#[from] std::string::FromUtf8Error),
 }
@@ -49,9 +54,14 @@ impl std::fmt::Debug for Negative {
 
 impl Negative {
     /// Create a new negative based on the given image
+    ///
+    /// This will open up the given path for reading, and extract both EXIF
+    /// and XMP data if available. Only file formats supported by [little_exif]
+    /// are supported; XMP data is extracted from the EXIF IFD and fed directly
+    /// to the XMP Toolkit to avoid the toolkit reconciling legacy tags.
+    ///
+    /// [little_exif]: https://docs.rs/little_exif/latest/little_exif/
     pub fn new_from_path(path: &Path) -> Result<Negative, NegativeError> {
-        // Read EXIF data using little_exif, then read the XMP data directly
-        // from the EXIF tag to avoid the XMP Toolkit reconciling legacy tags.
         let exif_data = little_exif::metadata::Metadata::new_from_path(path)?;
         let xmp_data = exif_data
             .get_tag(&ExifTag::UnknownINT8U(
@@ -79,8 +89,8 @@ impl Negative {
         })
     }
 
-    /// Create a new, empty, path-less negative
     #[cfg(test)]
+    /// Create a new, empty, path-less negative
     pub(crate) fn new() -> Negative {
         Self {
             exif: little_exif::metadata::Metadata::new(),
@@ -123,9 +133,12 @@ impl Negative {
     }
 
     /// Save the metadata back to the source file
+    ///
+    /// As with [`Negative::new_from_path`], this will use [little_exif] to write
+    /// EXIF tags to the source file, bypassing the XMP Toolkit reconciliation.
+    ///
+    /// [little_exif]: https://docs.rs/little_exif/latest/little_exif/
     pub fn save(&mut self) -> Result<(), NegativeError> {
-        // Again, write XMP data directly to the little_exif data structure to
-        // avoid XMP Toolkit touching all the non-XMP EXIF tags.
         use xmp_toolkit::ToStringOptions;
         self.exif.set_tag(ExifTag::UnknownINT8U(
             self.xmp
@@ -139,10 +152,25 @@ impl Negative {
     }
 }
 
-/// Trait for applying metadata to an image
+/// Apply film roll and author metadata to a negative
+///
+/// This trait is used to apply [`Roll`], [`Frame`], and [`Metadata`] to `Self`, which
+/// when applied to [`Negative`] will simply forward the application to the underlying
+/// EXIF and XMP representations held in memory.
 pub trait ApplyMetadata {
+    /// Apply [`Roll`] metadata to `self`
     fn apply_roll_data(&mut self, data: &Roll) -> Result<(), NegativeError>;
+
+    /// Apply [`Frame`] metadata to `self`
     fn apply_frame_data(&mut self, data: &Frame) -> Result<(), NegativeError>;
+
+    /// Apply author metadata to `self`
+    ///
+    /// Since the author metadata (in particular, the copyright information)
+    /// requires an associated `date`, this may be passed externally. If not
+    /// included, a sensible fall-back value should be used (i.e. the original
+    /// date/time of the image if available, or if all else fails the current
+    /// date/time).
     fn apply_author_data(
         &mut self,
         data: &Metadata,

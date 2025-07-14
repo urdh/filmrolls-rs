@@ -1,10 +1,13 @@
-//! Wrapper around XMP metadata for a single image
+//! Implements [`super::ApplyMetadata`] for [xmp_toolkit]
+//!
+//! [xmp_toolkit]: https://docs.rs/xmp_toolkit/latest/xmp_toolkit/
 use xmp_toolkit::xmp_ns::{DC, PHOTOSHOP, XMP_RIGHTS};
 use xmp_toolkit::XmpValue;
 
 use crate::metadata::{License, Metadata};
 use crate::rolls::{Frame, Roll};
 
+/// Creative commons XMP namespace
 const CC: &str = "http://creativecommons.org/ns#";
 
 impl super::ApplyMetadata for xmp_toolkit::XmpMeta {
