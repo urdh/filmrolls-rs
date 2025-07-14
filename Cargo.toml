@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Simon Sigurdhsson <Sigurdhsson@gmail.com>"]
 description = "Tag TIFF files with EXIF data extracted from XML"
 repository = "https://github.com/urdh/filmrolls-rs/"
-keywords = ["exif", "tool", "photography"]
+keywords = ["exif", "xmp", "tool", "photography"]
 categories = ["command-line-utilities", "multimedia::images"]
 license = "ISC"
 

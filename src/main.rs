@@ -11,6 +11,9 @@ mod negative;
 mod rolls;
 mod types;
 
+/// Application entry point
+///
+/// See [`clap::Cli`] for a description of the CLI itself.
 fn main() -> Result<ExitCode> {
     let args = clap::Cli::parse();
     args.init_colors()?;

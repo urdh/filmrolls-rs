@@ -1,4 +1,7 @@
 //! Author metadata definitions
+//!
+//! This module provides definitions for author and license
+//! metadata, including basic Creative Commons licenses.
 use chrono::Datelike;
 use serde::Deserialize;
 
@@ -54,7 +57,7 @@ impl License {
     }
 }
 
-/// An author
+/// An author, with an optional URL
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(Deserialize)]
 pub struct Author {
@@ -62,7 +65,7 @@ pub struct Author {
     pub url: Option<String>,
 }
 
-// A full set of metadata
+/// A full set of author metadata
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(Deserialize)]
 pub struct Metadata {
