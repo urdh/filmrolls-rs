@@ -2,7 +2,7 @@
 
 [![Github](https://img.shields.io/badge/github-urdh/filmrolls--rs-8da0cb?style=flat-square&labelColor=555555&logo=github)][github]
 [![Crate](https://img.shields.io/crates/v/filmrolls?style=flat-square&color=fc8d62&logo=rust)][release]
-[![License](https://img.shields.io/github/license/urdh/filmrolls-rs?style=flat-square)](LICENSE.md)
+[![License](https://img.shields.io/crates/l/filmrolls?style=flat-square)](LICENSE.md)
 [![Workflow](https://img.shields.io/github/actions/workflow/status/urdh/filmrolls-rs/push.yml?style=flat-square)][build]
 [![Coverage](https://img.shields.io/codecov/c/gh/urdh/filmrolls-rs?style=flat-square)][codecov]
 
