@@ -352,8 +352,8 @@ mod tests {
                 make: "Voigtländer".into(),
                 model: "Bessa R2M".into(),
             }),
-            load: chrono::NaiveDateTime::MIN.and_utc().into(),
-            unload: chrono::NaiveDateTime::MAX.and_utc().into(),
+            load: chrono::NaiveDateTime::MIN,
+            unload: chrono::NaiveDateTime::MAX,
             frames: vec![],
         };
         exif.apply_roll_data(&roll)
@@ -412,8 +412,7 @@ mod tests {
     fn apply_frame_data() {
         let mut exif = little_exif::metadata::Metadata::new();
         let datetime = chrono::NaiveDate::from_ymd_opt(2025, 6, 1)
-            .and_then(|date| date.and_hms_opt(12, 15, 00))
-            .map(|date| date.and_utc());
+            .and_then(|date| date.and_hms_opt(12, 15, 00));
         let frame = Frame {
             lens: Some(Lens::MakeModel {
                 make: "Voigtländer".into(),
@@ -426,7 +425,7 @@ mod tests {
                 equiv: Some(dec!(35)),
             }),
             compensation: Some(ExposureBias(Ratio::new(-1, 3))),
-            datetime: datetime.unwrap().into(),
+            datetime: datetime.unwrap(),
             position: Position { lat: 0.0, lon: 0.0 },
             note: None,
         };

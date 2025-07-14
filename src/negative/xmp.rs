@@ -17,7 +17,7 @@ impl super::ApplyMetadata for xmp_toolkit::XmpMeta {
         self.set_property_date(
             PHOTOSHOP,
             "DateCreated",
-            &XmpValue::new(data.datetime.into()),
+            &XmpValue::new(data.datetime.and_utc().fixed_offset().into()),
         )?;
 
         // Success!
@@ -103,8 +103,8 @@ mod tests {
                 make: "Voigtländer".into(),
                 model: "Bessa R2M".into(),
             }),
-            load: chrono::NaiveDateTime::MIN.and_utc().into(),
-            unload: chrono::NaiveDateTime::MAX.and_utc().into(),
+            load: chrono::NaiveDateTime::MIN,
+            unload: chrono::NaiveDateTime::MAX,
             frames: vec![],
         };
         xmp.apply_roll_data(&roll)
@@ -116,8 +116,7 @@ mod tests {
         let mut xmp = xmp_toolkit::XmpMeta::new() //
             .expect("should be possible to initialize empty XMP data");
         let datetime = chrono::NaiveDate::from_ymd_opt(2025, 6, 1)
-            .and_then(|date| date.and_hms_opt(12, 15, 00))
-            .map(|date| date.and_utc());
+            .and_then(|date| date.and_hms_opt(12, 15, 00));
         let frame = Frame {
             lens: Some(Lens::MakeModel {
                 make: "Voigtländer".into(),
@@ -130,7 +129,7 @@ mod tests {
                 equiv: Some(dec!(35)),
             }),
             compensation: Some(ExposureBias(Ratio::new(-1, 3))),
-            datetime: datetime.unwrap().into(),
+            datetime: datetime.unwrap(),
             position: Position { lat: 0.0, lon: 0.0 },
             note: None,
         };
@@ -139,7 +138,9 @@ mod tests {
 
         assert_eq!(
             xmp.property_date(PHOTOSHOP, "DateCreated"),
-            Some(XmpValue::new(frame.datetime.into()))
+            Some(XmpValue::new(
+                frame.datetime.and_utc().fixed_offset().into()
+            ))
         );
     }
 

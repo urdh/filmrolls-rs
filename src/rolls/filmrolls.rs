@@ -1,5 +1,5 @@
 //! Deserialization for *Film Rolls* XML data
-use chrono::{DateTime, FixedOffset};
+use chrono::NaiveDateTime;
 use quick_xml::serde_helpers::text_content;
 use serde::Deserialize;
 use serde_with::DeserializeFromStr;
@@ -143,25 +143,17 @@ pub type Text<'a> = std::borrow::Cow<'a, str>;
 /// Sloppy RFC3339 date/time type with lax parsing
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 #[derive(DeserializeFromStr)]
-pub struct XmlDateTime(DateTime<FixedOffset>);
+pub struct XmlDateTime(NaiveDateTime);
 
-impl<Tz> From<XmlDateTime> for DateTime<Tz>
-where
-    Tz: chrono::TimeZone,
-    DateTime<Tz>: From<DateTime<FixedOffset>>,
-{
+impl From<XmlDateTime> for NaiveDateTime {
     fn from(value: XmlDateTime) -> Self {
-        value.0.into()
+        value.0
     }
 }
 
-impl<Tz> From<DateTime<Tz>> for XmlDateTime
-where
-    Tz: chrono::TimeZone,
-    DateTime<FixedOffset>: From<DateTime<Tz>>,
-{
-    fn from(value: DateTime<Tz>) -> Self {
-        Self(value.into())
+impl From<NaiveDateTime> for XmlDateTime {
+    fn from(value: NaiveDateTime) -> Self {
+        Self(value)
     }
 }
 
@@ -169,14 +161,12 @@ impl std::str::FromStr for XmlDateTime {
     type Err = chrono::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        chrono::DateTime::<FixedOffset>::parse_from_rfc3339(s)
-            .or_else(|_| {
-                chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f")
-                    .map(|date| date.and_utc().into())
-            })
+        chrono::DateTime::<chrono::FixedOffset>::parse_from_rfc3339(s)
+            .map(|d| d.naive_local())
+            .or_else(|_| chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f"))
             .or_else(|_| {
                 chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
-                    .map(|date| date.and_time(chrono::NaiveTime::default()).and_utc().into())
+                    .map(|date| date.and_time(chrono::NaiveTime::default()))
             })
             .map(Self)
     }
@@ -185,7 +175,7 @@ impl std::str::FromStr for XmlDateTime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
+    use chrono::NaiveDate;
     use num_rational::Rational32;
     use pretty_assertions::assert_eq;
     use quick_xml::de::{from_str, DeError};
@@ -195,27 +185,35 @@ mod tests {
     fn parse_sloppy_rfc3339() -> Result<(), chrono::ParseError> {
         use std::str::FromStr;
         assert_eq!(
+            XmlDateTime::from_str("2016-03-28T15:16:36+05:00")?.0,
+            NaiveDate::from_ymd_opt(2016, 3, 28)
+                .and_then(|d| d.and_hms_opt(15, 16, 36))
+                .unwrap()
+        );
+        assert_eq!(
             XmlDateTime::from_str("2016-03-28T15:16:36Z")?.0,
-            chrono::Utc
-                .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
+            NaiveDate::from_ymd_opt(2016, 3, 28)
+                .and_then(|d| d.and_hms_opt(15, 16, 36))
                 .unwrap()
         );
         assert_eq!(
             XmlDateTime::from_str("2019-07-17T15:47:53.208630")?.0,
-            chrono::Utc
-                .with_ymd_and_hms(2019, 7, 17, 15, 47, 53)
+            NaiveDate::from_ymd_opt(2019, 7, 17)
+                .and_then(|d| d.and_hms_opt(15, 47, 53))
                 .map(|date| date + chrono::Duration::microseconds(208630))
                 .unwrap()
         );
         assert_eq!(
             XmlDateTime::from_str("2019-07-17T15:47:53")?.0,
-            chrono::Utc
-                .with_ymd_and_hms(2019, 7, 17, 15, 47, 53)
+            NaiveDate::from_ymd_opt(2019, 7, 17)
+                .and_then(|d| d.and_hms_opt(15, 47, 53))
                 .unwrap()
         );
         assert_eq!(
             XmlDateTime::from_str("2019-07-17")?.0,
-            chrono::Utc.with_ymd_and_hms(2019, 7, 17, 0, 0, 0).unwrap()
+            NaiveDate::from_ymd_opt(2019, 7, 17)
+                .map(|d| d.and_time(chrono::NaiveTime::default()))
+                .unwrap()
         );
         Ok(())
     }
@@ -310,12 +308,12 @@ mod tests {
                         title: Some("Ilford Delta 100".into()),
                         speed: 100,
                         camera: Some("Voigtländer Bessa R2M".into()),
-                        load: chrono::Utc
-                            .with_ymd_and_hms(2016, 3, 28, 15, 16, 36)
+                        load: NaiveDate::from_ymd_opt(2016, 3, 28)
+                            .and_then(|d| d.and_hms_opt(15, 16, 36))
                             .unwrap()
                             .into(),
-                        unload: chrono::Utc
-                            .with_ymd_and_hms(2016, 5, 21, 14, 13, 15)
+                        unload: NaiveDate::from_ymd_opt(2016, 5, 21)
+                            .and_then(|d| d.and_hms_opt(14, 13, 15))
                             .unwrap()
                             .into(),
                         note: Some("A0012".into()),
@@ -327,8 +325,8 @@ mod tests {
                                 compensation: None,
                                 accessory: None,
                                 number: 1,
-                                date: chrono::Utc
-                                    .with_ymd_and_hms(2016, 5, 13, 14, 12, 40)
+                                date: NaiveDate::from_ymd_opt(2016, 5, 13)
+                                    .and_then(|d| d.and_hms_opt(14, 12, 40))
                                     .unwrap()
                                     .into(),
                                 latitude: 57.700767,

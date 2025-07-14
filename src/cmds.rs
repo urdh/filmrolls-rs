@@ -208,7 +208,7 @@ mod tests {
     use crate::negative::*;
     use crate::rolls::*;
     use crate::types::*;
-    use chrono::{DateTime, Utc};
+    use chrono::NaiveDateTime;
     use itertools::assert_equal;
     use pretty_assertions::assert_eq;
 
@@ -218,8 +218,8 @@ mod tests {
             film: Some(Film("Ilford Delta 100".into())),
             speed: FilmSpeed::from_din(21), // ISO 100/21°
             camera: "Voigtländer Bessa R2M".try_into().ok(),
-            load: DateTime::<Utc>::UNIX_EPOCH.into(),
-            unload: DateTime::<Utc>::UNIX_EPOCH.into(),
+            load: NaiveDateTime::default(),
+            unload: NaiveDateTime::default(),
             frames: vec![
                 None,
                 Some(Frame {
@@ -228,7 +228,7 @@ mod tests {
                     shutter_speed: Some(ShutterSpeed::from(num_rational::Ratio::new(1, 500))),
                     focal_length: None,
                     compensation: None,
-                    datetime: DateTime::<Utc>::UNIX_EPOCH.into(),
+                    datetime: NaiveDateTime::default(),
                     position: Position {
                         lat: 57.700767,
                         lon: 11.953715,
