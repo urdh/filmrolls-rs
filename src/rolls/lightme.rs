@@ -94,6 +94,10 @@ impl std::str::FromStr for CustomDateTime {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         chrono::NaiveDateTime::parse_from_str(s, "%Y:%m:%d %H:%M:%S")
             .or_else(|_| chrono::NaiveDateTime::parse_from_str(s, "%d %b %Y at %H:%M"))
+            .or_else(|_| {
+                chrono::NaiveDate::parse_from_str(s, "%d %b %Y")
+                    .map(|date| date.and_time(chrono::NaiveTime::default()))
+            })
             .map(Self)
     }
 }
@@ -153,6 +157,12 @@ mod tests {
             CustomDateTime::from_str("30 Apr 2022 at 17:57")?.0,
             NaiveDate::from_ymd_opt(2022, 4, 30)
                 .and_then(|d| d.and_hms_opt(17, 57, 00))
+                .unwrap()
+        );
+        assert_eq!(
+            CustomDateTime::from_str("30 Apr 2022")?.0,
+            NaiveDate::from_ymd_opt(2022, 4, 30)
+                .map(|d| d.and_time(chrono::NaiveTime::default()))
                 .unwrap()
         );
         Ok(())

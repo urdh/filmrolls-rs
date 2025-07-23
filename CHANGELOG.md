@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Correctly handle Lighme Logbook roll load/unload dates with no associated time value
+
 ## [0.1.0] - 2025-07-14
 
 ### Added
