@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Printed timestamps now omit nanoseconds, making output less cluttered
+
 ### Fixed
 
 - Correctly handle Lighme Logbook roll load/unload dates with no associated time value

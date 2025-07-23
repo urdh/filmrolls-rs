@@ -1,6 +1,7 @@
 //! Command-line interface implementations
 use std::string::ToString;
 
+use chrono::Timelike;
 use color_eyre::eyre::{Report, Result};
 use comfy_table::Table;
 use itertools::{EitherOrBoth, Itertools};
@@ -48,8 +49,14 @@ where
                     .as_ref()
                     .map(ToString::to_string)
                     .unwrap_or_default(),
-                roll.load.to_string(),
-                roll.unload.to_string(),
+                roll.load
+                    .with_nanosecond(0)
+                    .expect("should be possible to set nanoseconds to zero")
+                    .to_string(),
+                roll.unload
+                    .with_nanosecond(0)
+                    .expect("should be possible to set nanoseconds to zero")
+                    .to_string(),
             ]);
             Ok(table)
         })
@@ -129,7 +136,11 @@ pub fn list_frames(roll: rolls::Roll) -> Table {
                                 .as_ref()
                                 .map(ToString::to_string)
                                 .unwrap_or_default(),
-                            frame.datetime.to_string(),
+                            frame
+                                .datetime
+                                .with_nanosecond(0)
+                                .expect("should be possible to set nanoseconds to zero")
+                                .to_string(),
                             frame.position.to_string(),
                             frame
                                 .note
