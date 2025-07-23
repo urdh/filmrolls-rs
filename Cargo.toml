@@ -1,6 +1,6 @@
 [package]
 name = "filmrolls"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Simon Sigurdhsson <Sigurdhsson@gmail.com>"]
 description = "Tag TIFF files with EXIF data extracted from XML"
 repository = "https://github.com/urdh/filmrolls-rs/"

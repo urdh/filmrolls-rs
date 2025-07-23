@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-07-23
+
 ### Changed
 
 - Printed timestamps now omit nanoseconds, making output less cluttered
@@ -26,9 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The author metadata is TOML-based instead of YAML-based
 
-## Removed
+### Removed
 
 - Unlike the ruby-based implementation, IPTC metadata is not supported
 
-[Unreleased]: https://github.com/urdh/filmrolls-rs/commit/v0.1.0...HEAD
+[Unreleased]: https://github.com/urdh/filmrolls-rs/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/urdh/filmrolls-rs/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/urdh/filmrolls-rs/releases/tag/v0.1.0
