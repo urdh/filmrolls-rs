@@ -26,7 +26,7 @@ $ filmrolls apply-metadata -n -m tests/data/metadata.toml
 $ filmrolls apply-metadata -n --color=never -m tests/data/metadata.toml /path/which/does/not/exist.tiff
 ? failed
 Error: 
-   0: File does not exist!
+   0: Can't open file - File does not exist!
 
 Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
 Run with RUST_BACKTRACE=full to include source snippets.
@@ -39,7 +39,7 @@ Run with RUST_BACKTRACE=full to include source snippets.
 $ filmrolls apply-metadata -n --color=never -m tests/data/metadata.toml /dev/null
 ? failed
 Error: 
-   0: Can't get file extension!
+   0: Could not determine file type when reading file!
 
 Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
 Run with RUST_BACKTRACE=full to include source snippets.
