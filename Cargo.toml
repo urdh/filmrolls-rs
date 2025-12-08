@@ -74,7 +74,7 @@ version = "0.9"
 features = ["serde"]
 
 [dependencies.xmp_toolkit]
-version = "1.0"
+version = "1.12"
 features = ["chrono"]
 
 [dev-dependencies]
