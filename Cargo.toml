@@ -25,7 +25,7 @@ mime_guess = "2.0"
 num-integer = "0.1"
 num-traits = "0.2"
 serde_json = "1.0"
-shadow-rs = "1.5"
+shadow-rs = "1.6"
 thiserror = "2.0"
 ucs2 = "0.3"
 
@@ -83,7 +83,7 @@ rust_decimal_macros = "1.34"
 trycmd = "0.15"
 
 [build-dependencies]
-shadow-rs = "1.5"
+shadow-rs = "1.6"
 
 [profile.dev.package.backtrace]
 opt-level = 3
