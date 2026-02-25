@@ -66,7 +66,7 @@ version = "1.0"
 features = ["derive"]
 
 [dependencies.serde_with]
-version = "3.16"
+version = "3.17"
 features = ["macros", "json"]
 
 [dependencies.toml]
